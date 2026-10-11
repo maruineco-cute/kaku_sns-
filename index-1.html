@@ -1,0 +1,1551 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chick Talk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700;900&family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: 作業台。左にタブ+操作パネル、右にスマホ幅のタイムライン(完成画像と同じ見た目)。狭い画面では縦に積む。 */
+:root {
+  --bg: #0d0f12;
+  --panel: #14171c;
+  --raise: #1b1f26;
+  --line: #272d36;
+  --fg: #e9ecef;
+  --muted: #8a929d;
+  --accent: #ffd24a;
+  --accent-ink: #2b2000;
+  --danger: #ff7b7b;
+  --stage: #08090b;
+  --display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Noto Sans JP", sans-serif;
+  --body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100%; }
+.tools { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; background: var(--panel); }
+.rail { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); background: var(--bg); }
+.tab {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 4px; border: 0; background: none; color: var(--muted);
+  font-size: 12px; border-bottom: 2px solid transparent;
+}
+.tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.head { padding: 18px 16px 4px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.head h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 24px; letter-spacing: .01em; }
+.head h1 span { color: var(--accent); }
+.head p { margin: 0; color: var(--muted); font-size: 12px; }
+.panes { padding: 12px 16px 32px; min-height: 0; }
+.pane { display: flex; flex-direction: column; gap: 22px; }
+.pane h2 { font-family: var(--display); font-size: 17px; margin: 0; }
+.pane h3 { font-size: 13px; margin: 0; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+.sec { display: flex; flex-direction: column; gap: 10px; }
+.note { color: var(--muted); font-size: 12px; margin: 0; }
+code { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--raise); padding: 1px 6px; border-radius: 4px; }
+.guide { background: var(--raise); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.guide b { font-size: 13px; }
+.savenote { margin: 0; font-size: 13px; }
+.savenote.warn { color: var(--danger); }
+.guide code { background: none; padding: 0; font-size: 13px; overflow-wrap: anywhere; }
+.gr { display: flex; flex-direction: column; min-width: 0; }
+.gr span { color: var(--muted); font-size: 12px; }
+.guide code.pre { white-space: pre-wrap; }
+.steps { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: 13px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.quick .chip { min-height: 32px; }
+.chip.mono { font-family: var(--mono); }
+
+.stage { background: var(--stage); padding: 16px; min-width: 0; }
+
+@media (min-width: 900px) {
+  .app { grid-template-columns: 460px minmax(0, 1fr); height: 100%; min-height: 0; }
+  .tools { grid-template-rows: none; grid-template-columns: 76px minmax(0, 1fr); height: 100%; overflow: hidden; }
+  .rail { grid-template-columns: none; grid-template-rows: none; display: flex; flex-direction: column; border-bottom: 0; border-right: 1px solid var(--line); padding-top: 8px; }
+  .tab { border-bottom: 0; border-left: 2px solid transparent; padding: 14px 4px; }
+  .tab[aria-selected="true"] { border-left-color: var(--accent); }
+  .content { height: 100%; overflow: hidden; }
+  .panes { overflow-y: auto; flex: 1; }
+  .stage { height: 100%; overflow-y: auto; padding: 24px 16px; }
+}
+
+/* controls */
+label.f { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
+input[type="text"], input[type="number"], textarea {
+  width: 100%; background: var(--raise); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; color: var(--fg); font-size: 14px;
+}
+textarea { resize: vertical; line-height: 1.7; }
+textarea.mono, .mono { font-family: var(--mono); font-size: 12px; line-height: 1.6; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--raise); color: var(--fg);
+  padding: 9px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; min-height: 40px;
+}
+.btn:hover { border-color: #3a424e; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.small { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+.btn.danger { color: var(--danger); }
+.btn[disabled] { opacity: .5; cursor: progress; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: flex-end; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--raise); padding: 7px 14px; font-size: 13px; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.chip { border: 1px solid var(--line); background: var(--raise); border-radius: 999px; padding: 3px 12px; font-size: 12px; }
+.chip.add { color: var(--accent); border-color: #5c4d1c; }
+.warn { color: var(--danger); font-size: 12px; }
+.ok { color: var(--muted); font-size: 12px; }
+
+/* character list */
+.chars { display: flex; flex-direction: column; }
+.crow { display: grid; grid-template-columns: auto 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.crow:first-child { border-top: 1px solid var(--line); }
+.crow .meta { min-width: 0; }
+.crow .nm { display: flex; align-items: center; gap: 4px; font-weight: 700; }
+.crow .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crow .id { color: var(--muted); font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crow .ops { display: flex; gap: 6px; }
+.av-s { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; font-weight: 700; color: #fff; background: #333; }
+.form { background: var(--raise); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.iconrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.msg { min-height: 1.4em; font-size: 12px; color: var(--danger); margin: 0; }
+
+/* images library */
+.lib { display: flex; flex-wrap: wrap; gap: 8px; }
+.lib figure { margin: 0; width: 76px; position: relative; }
+.lib img { width: 76px; height: 76px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.lib figcaption { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); }
+.lib .rm { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0,0,0,.7); color: #fff; line-height: 1; padding: 0; }
+.lib .thumb { padding: 0; border: 0; background: none; display: block; border-radius: 8px; }
+.lib .thumb:hover img { border-color: var(--accent); }
+
+/* theme cards */
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tcard { text-align: left; border: 1px solid var(--line); background: var(--raise); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.tcard[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tcard b { font-size: 14px; }
+.tcard small { color: var(--muted); font-size: 11px; }
+.mini { border-radius: 8px; padding: 10px; display: flex; gap: 8px; height: 64px; }
+.mini i { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.mini u { display: block; height: 6px; border-radius: 3px; text-decoration: none; margin-bottom: 6px; }
+
+.bigsave { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bigsave .btn { min-height: 56px; font-size: 16px; }
+
+/* modal + toast */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.78); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; width: min(560px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; gap: 12px; }
+.sheet .pic { min-height: 0; overflow: auto; border-radius: 8px; background: var(--stage); text-align: center; }
+.sheet img { max-width: 100%; display: block; margin: 0 auto; max-height: 56vh; object-fit: contain; }
+.sheet .pic { padding: 8px; display: flex; flex-direction: column; gap: 14px; }
+.rf { margin: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.rf figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+.numl { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.numl input { width: 5.5em; text-align: center; }
+/* 引用ポスト */
+.qt { margin-top: 10px; border: 1px solid var(--tline); border-radius: var(--tmr); padding: 10px 12px; }
+.qh { display: flex; align-items: center; gap: 6px; line-height: 18px; font-size: .94em; min-width: 0; }
+.qh .dn { font-weight: 700; }
+.qh .qid { color: var(--tmuted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb { margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+.tl[data-theme="chick"] .qt { border-radius: 16px; border-style: dashed; background: var(--tsoft); }
+/* ご利用にあたって */
+.terms { margin: 8px 16px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--raise); font-size: 12px; color: var(--muted); }
+.terms summary { cursor: pointer; padding: 9px 12px; list-style: none; }
+.terms summary::-webkit-details-marker { display: none; }
+.terms summary b { color: var(--fg); font-weight: 700; }
+.terms summary::after { content: "▼ くわしく"; float: right; font-size: 11px; }
+.terms[open] summary::after { content: "▲ とじる"; }
+.terms ul { margin: 0; padding: 0 14px 12px 28px; display: flex; flex-direction: column; gap: 5px; line-height: 1.6; }
+.terms li b { color: var(--fg); }
+/* 色えらび */
+.swr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.swr button.sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); padding: 0; background: var(--c, #888); }
+.swr button.sw[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+.swr button.sw.auto { background: repeating-linear-gradient(45deg, #666 0 4px, #999 4px 8px); }
+.swr input[type=color] { width: 36px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; }
+/* プロフィール画面 */
+.prof .pbn { height: 112px; position: relative; overflow: hidden; color: rgba(255,255,255,.28); }
+.prof .pbn svg { position: absolute; right: 14px; bottom: -10px; width: 96px; height: 96px; }
+.prof .pinfo { padding: 0 16px 12px; }
+.prof .prow { display: flex; align-items: flex-end; justify-content: space-between; margin-top: -38px; }
+.prof .pav { position: relative; z-index: 1; border-radius: 50%; border: 4px solid var(--tbg); background: var(--tbg); line-height: 0; }
+.prof .pfollow { border: 1px solid var(--tline); border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.prof .pnm { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 20px; line-height: 26px; }
+.prof .phd { color: var(--tmuted); font-size: 14px; line-height: 18px; }
+.prof .pbio { margin-top: 10px; white-space: pre-wrap; word-break: break-word; }
+.prof .pjoin { margin-top: 10px; color: var(--tmuted); font-size: 13px; }
+.prof .pst { margin-top: 8px; display: flex; gap: 16px; font-size: 14px; color: var(--tmuted); }
+.prof .pst b { color: var(--tfg); font-weight: 700; margin-right: 3px; }
+.prof .ptabs { display: flex; border-top: 1px solid var(--tline); color: var(--tmuted); font-weight: 500; font-size: 14px; }
+.prof .ptabs span { flex: 1; text-align: center; padding: 12px 0; position: relative; }
+.prof .ptabs span.on { color: var(--tfg); font-weight: 700; }
+.prof .ptabs span.on::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 44px; height: 4px; border-radius: 2px; background: var(--tbadge); transform: translateX(-50%); }
+.tl[data-theme="chick"] .prof .pbn { border-radius: 0 0 28px 28px; height: 120px; }
+.tl[data-theme="chick"] .prof .pav { box-shadow: 0 0 0 2px var(--tbadge); }
+.tl[data-theme="chick"] .prof .pst span { background: var(--tsoft); border-radius: 999px; padding: 4px 12px; }
+.tl[data-theme="chick"] .prof .pfollow { background: var(--tbadge); color: #2b2000; border-color: transparent; }
+.tl[data-theme="chick"] .prof .ptabs span.on::after { width: 28px; }
+.tl[data-theme="bluesky"] .prof .pfollow { background: var(--tbadge); color: #fff; border-color: transparent; }
+.tl[data-theme="bluesky"] .prof .pav { border-radius: 50%; }
+.tl[data-theme="threads"] .prof .pbn { display: none; }
+.tl[data-theme="threads"] .prof .pinfo { padding-top: 16px; position: relative; }
+.tl[data-theme="threads"] .prof .prow { margin: 0; position: absolute; right: 16px; top: 16px; }
+.tl[data-theme="threads"] .prof .pav { border: 0; }
+.tl[data-theme="threads"] .prof .pfollow { display: none; }
+.tl[data-theme="threads"] .prof .pnm { margin-top: 0; font-size: 22px; padding-right: 90px; }
+.tl[data-theme="threads"] .prof .phd { color: var(--tfg); padding-right: 90px; }
+.tl[data-theme="threads"] .prof .pbio { padding-right: 0; }
+.tl[data-theme="threads"] .prof .pjoin { display: none; }
+.tl[data-theme="threads"] .prof .pbio { margin-top: 28px; }
+.tl[data-theme="threads"] .prof .ptabs span.on::after { width: 100%; height: 2px; bottom: 0; left: 0; transform: none; border-radius: 0; background: var(--tfg); }
+.tl[data-theme="x"] .prof .pfollow { background: var(--tfg); color: var(--tbg); border-color: transparent; }
+.cut { text-align: center; font-size: 11px; color: var(--tmuted); border-top: 1px dashed var(--tmuted); border-bottom: 1px dashed var(--tmuted); padding: 3px 8px; margin: 10px 0; letter-spacing: .04em; }
+.cut:first-child { margin-top: 0; }
+#toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
+
+/* ===== timeline (出力される画像そのもの) ===== */
+.tl {
+  --tbg: #14130e; --tfg: #f4f1e6; --tmuted: #8c8776; --tline: #2a281f; --tbadge: #ffd24a; --tlink: #ffd24a; --tthread: #3b392c; --tcheck: #3a2a00; --tsoft: rgba(255,255,255,.07); --tcard: #1d1c15; --tad: #28240f;
+  --tav: 42px; --tmr: 14px;
+  width: 100%; max-width: 600px; margin: 0 auto;
+  background: var(--tbg); color: var(--tfg);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-size: 15px; line-height: 1.45;
+  border: 1px solid var(--tline);
+}
+.tl[data-theme="x"] { --tbg: #000; --tfg: #e7e9ea; --tmuted: #71767b; --tline: #2f3336; --tbadge: #1d9bf0; --tlink: #1d9bf0; --tthread: #333639; --tcheck: #fff; --tav: 40px; --tmr: 16px; }
+.tl[data-theme="bluesky"] { --tbg: #161e27; --tfg: #f1f3f5; --tmuted: #8b98a5; --tline: #2a3441; --tbadge: #208bfe; --tlink: #208bfe; --tthread: #3a4757; --tcheck: #fff; --tav: 42px; --tmr: 10px; }
+.tl[data-theme="threads"] { --tbg: #101010; --tfg: #f3f5f7; --tmuted: #777; --tline: #2a2a2a; --tbadge: #0095f6; --tlink: #f3f5f7; --tthread: #3d3d3d; --tcheck: #fff; --tav: 36px; --tmr: 8px; }
+.tl[data-mode="light"] { --tsoft: rgba(0,0,0,.05); --tcard: #ffffff; --tad: #fff1bd; --tbg: #fffef8; --tfg: #1c1a12; --tmuted: #7a7566; --tline: #ebe7d5; --tbadge: #f5b800; --tlink: #a97700; --tthread: #e0dcc6; --tcheck: #3a2a00; }
+.tl[data-theme="x"][data-mode="light"] { --tbg: #fff; --tfg: #0f1419; --tmuted: #536471; --tline: #eff3f4; --tbadge: #1d9bf0; --tlink: #1d9bf0; --tthread: #cfd9de; --tcheck: #fff; }
+.tl[data-theme="bluesky"][data-mode="light"] { --tbg: #fff; --tfg: #0b0f14; --tmuted: #667b99; --tline: #d4dbe2; --tbadge: #208bfe; --tlink: #1083fe; --tthread: #d4dbe2; --tcheck: #fff; }
+.tl[data-theme="threads"][data-mode="light"] { --tbg: #fff; --tfg: #000; --tmuted: #999; --tline: #e6e6e6; --tbadge: #0095f6; --tlink: #000; --tthread: #dbdbdb; --tcheck: #fff; }
+.grp { border-bottom: 1px solid var(--tline); }
+.post { display: flex; gap: 12px; padding: 12px 16px; }
+.avc { display: flex; flex-direction: column; align-items: center; flex: none; width: var(--tav); }
+.ln { flex: 1; width: 2px; margin-top: 4px; background: var(--tthread); border-radius: 1px; }
+.post.cont { border-bottom: 0; padding-bottom: 0; }
+.post.cont .pm { padding-bottom: 12px; }
+.post.rep { padding-top: 2px; }
+.av { width: var(--tav); height: var(--tav); border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 16px; }
+.pm { min-width: 0; flex: 1; }
+.ph { display: flex; align-items: center; gap: 4px; line-height: 20px; min-width: 0; }
+.dn { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.bd { width: 18px; height: 18px; flex: none; display: block; }
+.hd, .tm { color: var(--tmuted); white-space: nowrap; }
+.hd { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tm::before { content: "·"; margin-right: 4px; }
+.pb { margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+.lk { color: var(--tlink); }
+.media { margin-top: 12px; border: 1px solid var(--tline); border-radius: var(--tmr); overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.media img { width: 100%; height: auto; display: block; }
+.media.n1 { grid-template-columns: 1fr; }
+.media.n3 img:first-child { grid-column: 1 / -1; }
+.acts { display: flex; justify-content: space-between; max-width: 420px; margin-top: 12px; color: var(--tmuted); font-size: 13px; }
+.act { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.act svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.act span { min-width: 1ch; }
+.tl[data-theme="threads"] .acts { justify-content: flex-start; gap: 22px; }
+.tl[data-theme="threads"] .hd { display: none; }
+.tl[data-theme="threads"] .tm { margin-left: auto; }
+.tl[data-theme="threads"] .tm::before { content: none; }
+.tl[data-theme="threads"] .av { width: var(--tav); height: var(--tav); }
+.tl-empty { padding: 48px 24px; text-align: center; color: var(--tmuted); }
+
+
+/* ---- shared chrome ---- */
+.i { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; display: block; }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; min-height: 54px; }
+.bar > .i { width: 26px; height: 26px; color: var(--tmuted); }
+.logo { display: flex; align-items: center; color: var(--tfg); }
+.logo svg { width: 30px; height: 30px; }
+.logo.tc { color: var(--tbadge); }
+.logo .lt { font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; font-weight: 900; font-size: 27px; line-height: 1; letter-spacing: 0; }
+.logo .lt.two { font-size: 21px; letter-spacing: -.02em; }
+.logo .lg { width: 30px; height: 30px; display: block; object-fit: contain; }
+.th { border-bottom: 1px solid var(--tline); }
+.tabs { display: flex; }
+.tabs span { color: var(--tmuted); font-weight: 500; white-space: nowrap; flex: none; }
+.cp { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--tline); color: var(--tmuted); }
+.cp .ics { margin-left: auto; display: flex; gap: 16px; color: var(--tbadge); }
+.cp .ics .i { width: 26px; height: 26px; }
+.cp .send { margin-left: auto; border: 1px solid var(--tline); border-radius: 999px; padding: 3px 14px; color: var(--tfg); font-weight: 600; }
+.act.liked { color: var(--tlike, #f91880); }
+.act.reposted { color: #00ba7c; }
+.tl[data-theme="bluesky"] .act.reposted { color: #20bc07; }
+.act.marked { color: var(--tbadge); }
+.act.tg { cursor: pointer; }
+.act2 { display: flex; gap: 14px; }
+.tl[data-theme="chick"] .act.reposted { background: rgba(0,186,124,.22); color: #00a56d; }
+.tl[data-theme="chick"] .act.marked { color: var(--tlink); }
+.tl[data-theme="x"] { --tlike: #f91880; }
+.tl[data-theme="bluesky"] { --tlike: #ec4899; }
+.tl[data-theme="threads"] { --tlike: #ff3040; }
+@media (max-width: 480px) {
+  .acts { font-size: 12px; }
+  .acts .act > .i { width: 16px; height: 16px; }
+  .acts .act > .i + .i { margin-left: 10px; }
+  .tl[data-theme="bluesky"] .acts, .tl[data-theme="x"] .acts { gap: 2px; }
+  .post { gap: 10px; padding-left: 12px; padding-right: 12px; }
+}
+.more { display: flex; color: var(--tmuted); }
+.more .i { width: 18px; height: 18px; }
+.acts .act > .i + .i { margin-left: 14px; }
+.bt { position: relative; }
+.nv { display: flex; justify-content: space-around; align-items: center; padding: 10px 8px 14px; border-top: 1px solid var(--tline); background: var(--tbg); }
+.ni { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--tfg); font-size: 10px; min-width: 44px; }
+.ni .i { width: 27px; height: 27px; }
+.ni small { font-size: 10px; line-height: 1.2; }
+.bt.hasfab { padding-top: 72px; }
+.fab { position: absolute; right: 16px; top: 8px; width: 56px; height: 56px; border-radius: 50%; background: var(--tbadge); color: #fff; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+.fab .i { width: 26px; height: 26px; }
+
+/* ---- X ---- */
+.tl[data-theme="x"] .tabs span { flex: 1; text-align: center; padding: 14px 0; position: relative; }
+.tl[data-theme="x"] .tabs span.on { color: var(--tfg); font-weight: 700; }
+.tl[data-theme="x"] .tabs span.on::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 56px; height: 4px; border-radius: 2px; background: var(--tbadge); transform: translateX(-50%); }
+.tl[data-theme="x"] .acts { max-width: none; justify-content: space-between; }
+.tl[data-theme="x"] .more { margin-left: auto; }
+.tl[data-theme="x"] .bar > .logo svg { width: 28px; height: 28px; }
+
+/* ---- Bluesky ---- */
+.tl[data-theme="bluesky"] .tabs { padding: 0 8px; overflow: hidden; }
+.tl[data-theme="bluesky"] .tabs span { padding: 12px 12px 9px; font-size: 16px; border-bottom: 3px solid transparent; }
+.tl[data-theme="bluesky"] .tabs span.on { color: var(--tfg); font-weight: 700; border-bottom-color: var(--tbadge); }
+.tl[data-theme="bluesky"] .tm::before { content: none; }
+.tl[data-theme="bluesky"] .tm { margin-left: 4px; }
+.tl[data-theme="bluesky"] .acts { max-width: none; justify-content: space-between; }
+
+/* ---- Threads ---- */
+.tl[data-theme="threads"] .th { border-bottom: 0; }
+.tl[data-theme="threads"] .bar { justify-content: center; }
+.tl[data-theme="threads"] .tabs span { flex: 1; text-align: center; padding: 12px 0 10px; border-bottom: 1px solid var(--tline); }
+.tl[data-theme="threads"] .tabs span.on { color: var(--tfg); font-weight: 700; border-bottom-color: var(--tfg); }
+.tl[data-theme="threads"] .more { margin-left: 10px; }
+.tl[data-theme="threads"] .plus { background: var(--tsoft); border-radius: 12px; width: 48px; height: 36px; display: grid; place-items: center; }
+.tl[data-theme="threads"] .plus .i { width: 22px; height: 22px; }
+.tl[data-theme="threads"] .grp { border-bottom-color: var(--tline); }
+
+/* ---- Chick Talk ---- */
+.tl[data-theme="chick"] .th { border-bottom: 0; }
+.tl[data-theme="chick"] .wm { font-weight: 800; font-size: 20px; }
+.logo > svg + .wm, .logo > .lt + .wm, .logo > .lg + .wm { margin-left: 8px; }
+.tl[data-theme="chick"] .ics2 { display: flex; gap: 16px; color: var(--tmuted); }
+.tl[data-theme="chick"] .ics2 .i { width: 24px; height: 24px; }
+.pills { display: flex; gap: 8px; padding: 0 16px 12px; }
+.pills span { padding: 6px 16px; border-radius: 999px; background: var(--tsoft); color: var(--tmuted); font-weight: 500; }
+.pills span.on { background: var(--tbadge); color: #2b2000; font-weight: 700; }
+.tl[data-theme="chick"] .cp { margin: 0 12px 4px; border: 0; border-radius: 16px; background: var(--tsoft); padding: 10px 12px; }
+.tl[data-theme="chick"] .cp .send { border: 0; background: var(--tbadge); color: #2b2000; font-weight: 700; padding: 4px 16px; }
+.tl[data-theme="chick"] .grp { margin: 8px 12px; border: 0; border-radius: 18px; background: var(--tcard); box-shadow: 0 0 0 1px var(--tline); }
+.tl[data-theme="chick"] .post { padding: 14px; }
+.tl[data-theme="chick"] .post.cont { padding-bottom: 0; }
+.tl[data-theme="chick"] .post.rep { padding-top: 4px; }
+.tl[data-theme="chick"] .av { box-shadow: 0 0 0 2px var(--tbadge); }
+.tl[data-theme="chick"] .tm { margin-left: auto; }
+.tl[data-theme="chick"] .tm::before { content: none; }
+.tl[data-theme="chick"] .sub { color: var(--tmuted); font-size: 13px; line-height: 1.2; margin-bottom: 2px; }
+.tl[data-theme="chick"] .acts { max-width: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tl[data-theme="chick"] .act { background: var(--tsoft); border-radius: 999px; padding: 6px 2px; justify-content: center; gap: 3px; min-width: 0; }
+.tl[data-theme="chick"] .act span { white-space: nowrap; font-size: 11.5px; letter-spacing: -.01em; }
+.tl[data-theme="chick"] .act .i { width: 15px; height: 15px; }
+.tl[data-theme="chick"] .act.liked { background: var(--tbadge); color: #2b2000; }
+.tl[data-theme="chick"] .ln { width: 0; background: none; border-left: 3px dotted var(--tbadge); border-radius: 0; }
+.hot { margin-left: 8px; background: var(--tbadge); color: #2b2000; border-radius: 999px; padding: 1px 9px; font-size: 11px; font-weight: 700; }
+.tl[data-theme="chick"] .ni { color: var(--tmuted); }
+.tl[data-theme="chick"] .ni.on { color: var(--tlink); }
+.tl[data-theme="chick"] .plus { background: var(--tbadge); color: #2b2000; border-radius: 50%; width: 46px; height: 46px; display: grid; place-items: center; margin-top: -16px; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+.tl[data-theme="chick"] .plus .i { width: 24px; height: 24px; }
+.tl[data-theme="chick"] .nv { padding-top: 6px; }
+.tl[data-theme="chick"] .ad { padding: 12px 14px; background: var(--tad); display: flex; flex-direction: column; gap: 10px; }
+.adh { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.pr { border: 1px solid var(--tmuted); border-radius: 4px; padding: 0 6px; font-size: 10px; line-height: 16px; color: var(--tmuted); font-weight: 500; }
+.adrow { display: flex; gap: 12px; align-items: center; }
+.adimg { width: 64px; height: 64px; border-radius: 18px; background: var(--tbadge); display: grid; place-items: center; color: #2b2000; flex: none; }
+.adimg svg { width: 42px; height: 42px; }
+.adtx { min-width: 0; }
+.adfoot { display: flex; justify-content: flex-end; }
+.adcta { background: var(--tbadge); color: #2b2000; border-radius: 999px; padding: 5px 16px; font-weight: 700; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app">
+  <div class="tools">
+    <div class="rail" role="tablist" aria-label="機能">
+      <button class="tab" role="tab" data-tab="chars" id="tab-chars" aria-selected="true" aria-controls="pane-chars">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4"/><path d="M18 14.8c2 .6 3.2 2.2 3.5 5.2"/></svg>キャラ管理</button>
+      <button class="tab" role="tab" data-tab="post" id="tab-post" aria-selected="false" aria-controls="pane-post">
+        <svg viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg>投稿作成</button>
+      <button class="tab" role="tab" data-tab="theme" id="tab-theme" aria-selected="false" aria-controls="pane-theme">
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-1 1.5-2-.6-1.2.1-2.5 1.5-2.5H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg>テーマ</button>
+      <button class="tab" role="tab" data-tab="save" id="tab-save" aria-selected="false" aria-controls="pane-save">
+        <svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M4 19h16"/></svg>保存</button>
+    </div>
+
+    <div class="content">
+      <div class="head">
+        <h1>Chick<span>Talk</span></h1>
+        <p>架空SNSスクショメーカー Ver1.0</p>
+      </div>
+      <details class="terms" id="terms">
+        <summary><b>ご利用にあたって</b>(個人で楽しむ創作用・商用利用不可)</summary>
+        <ul>
+          <li><b>個人で楽しむための創作ツールです。</b>画面に出てくる人物・団体・投稿は、すべて架空のものです。</li>
+          <li><b>第三者の権利を侵害しないでください。</b>実在の人物・団体・作品などの著作権・肖像権・商標・名誉などを侵害する内容や、他人の画像の無断使用はしないでください。</li>
+          <li><b>だます目的では使えません。</b>X・Bluesky・Threads などの実在のサービスとは無関係の、パロディ風デザインです。本物の投稿だと思わせる使い方(デマ、なりすまし、詐欺、悪ふざけで人を傷つけること)は禁止です。</li>
+          <li><b>商用利用はできません。</b>販売、広告、仕事での利用、収益化などには使わないでください。</li>
+          <li><b>責任について。</b>このツールを使って起きたトラブルや損害について、制作者は責任を負いません。上の約束を守らなかった場合や、うそをついて使った場合の責任は、すべて利用した本人にあります。</li>
+          <li>入力した文章や画像は、お使いの端末のブラウザの中だけで処理されます(外部には送られません)。</li>
+        </ul>
+      </details>
+      <div class="panes">
+
+        <!-- キャラ管理 -->
+        <div class="pane" id="pane-chars" role="tabpanel" aria-labelledby="tab-chars">
+          <div class="sec">
+            <h2>登録キャラ一覧</h2>
+            <div class="chars" id="charList"></div>
+            <div class="row"><button class="btn" id="btnNewChar" type="button">新規キャラ追加</button></div>
+          </div>
+
+          <form class="form" id="charForm" hidden autocomplete="off">
+            <h3 id="formTitle">新規キャラ追加</h3>
+            <label class="f" for="cName">キャラ名<input type="text" id="cName" maxlength="30" placeholder="晴真"></label>
+            <label class="f" for="cHandle">ID<input type="text" id="cHandle" maxlength="30" placeholder="@haruma" class="mono"></label>
+            <label class="f" for="cBio">自己紹介(プロフィール画面に出ます。空でもOK)<textarea id="cBio" rows="3" maxlength="160" placeholder="カフェ店長。毎朝チーズケーキを焼いています"></textarea></label>
+            <div class="f">プロフィールの上の色
+              <div class="swr" id="bannerSw"></div>
+            </div>
+            <div class="row"><label class="f" for="cFollowing" style="flex:1">フォロー数(空なら自動)<input type="number" id="cFollowing" min="0" max="99999999" inputmode="numeric"></label><label class="f" for="cFollowers" style="flex:1">フォロワー数(空なら自動)<input type="number" id="cFollowers" min="0" max="99999999" inputmode="numeric"></label></div>
+            <label class="check" for="cVerified"><input type="checkbox" id="cVerified" checked> 認証マークをつける</label>
+            <div class="f">プロフィール画像
+              <div class="iconrow">
+                <div id="cPreview" class="av-s"></div>
+                <label class="btn small" for="cIcon">画像を選ぶ</label>
+                <input type="file" id="cIcon" accept="image/*" hidden>
+                <button class="btn small" id="btnIconClear" type="button">画像を外す</button>
+              </div>
+            </div>
+            <p class="msg" id="formMsg" role="alert"></p>
+            <div class="row end">
+              <button class="btn" id="btnFormCancel" type="button">キャンセル</button>
+              <button class="btn primary" id="btnFormSave" type="submit">追加</button>
+            </div>
+          </form>
+
+          <div class="sec">
+            <h2>バックアップ</h2>
+            <div class="guide">
+              <b>バックアップって?</b>
+              <p class="note">登録したキャラ(名前・ID・認証マーク・アイコン)をまとめて、文字として保存しておく機能です。ふだんはこのブラウザに自動で保存されています。スマホからPCへ引っ越すときや、念のための保管に使います。</p>
+              <b>保存する</b>
+              <ol class="steps">
+                <li>上の一覧で、保存したいキャラの左にチェックを入れる</li>
+                <li>「バックアップを作る」を押す</li>
+                <li>出てきた文字を「コピー」して、メモ帳などに貼って残す</li>
+              </ol>
+              <b>戻す</b>
+              <ol class="steps">
+                <li>残しておいた文字を、下の「戻す」の枠に貼り付ける</li>
+                <li>「復元する」を押す</li>
+              </ol>
+            </div>
+            <label class="f" for="setName">バックアップの名前(例: 晴真セット)<input type="text" id="setName" maxlength="40" value="晴真セット"></label>
+            <div class="row">
+              <button class="btn" id="btnExport" type="button">バックアップを作る</button>
+              <button class="btn" id="btnCopyJson" type="button">コピー</button>
+            </div>
+            <textarea id="jsonOut" class="mono" rows="5" readonly placeholder="ここに文字が出ます。「コピー」を押して保管してください"></textarea>
+            <h3>戻す</h3>
+            <div class="row">
+              <label class="btn small" for="jsonFile">保存したファイルを選ぶ</label>
+              <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+            </div>
+            <textarea id="jsonIn" class="mono" rows="4" placeholder="コピーして保管しておいた文字をここに貼り付け"></textarea>
+            <div class="row">
+              <label class="check" for="impAdd"><input type="radio" name="impMode" id="impAdd" checked> いまのキャラに追加(同じ名前は上書き)</label>
+              <label class="check" for="impReplace"><input type="radio" name="impMode" id="impReplace"> いまのキャラを全部入れ替え</label>
+            </div>
+            <div class="row"><button class="btn primary" id="btnImport" type="button">復元する</button></div>
+            <p class="msg" id="impMsg" role="status"></p>
+          </div>
+        </div>
+
+        <!-- 投稿作成 -->
+        <div class="pane" id="pane-post" role="tabpanel" aria-labelledby="tab-post" hidden>
+          <div class="sec">
+            <h2>投稿入力</h2>
+            <div class="guide">
+              <b>書き方</b>
+              <div class="gr"><code>キャラ名|本文</code><span>ふつうの投稿</span></div>
+              <div class="gr"><code>キャラ名|本文|cake.jpg</code><span>画像つきの投稿</span></div>
+              <div class="gr"><code>キャラ名|本文|a.jpg|b.jpg</code><span>画像を2枚(最大4枚。「|」でつなぎます)</span></div>
+              <div class="gr"><code>&gt;キャラ名|本文</code><span>直前の投稿への返信</span></div>
+              <div class="gr"><code>キャラ名|本文|引用:相手の名前:相手の本文</code><span>引用ポスト(相手の投稿を枠でかこんで見せます)</span></div>
+              <div class="gr"><code>プロフ|キャラ名</code><span>そのキャラのプロフィール画面。次の行から投稿を続けられます</span></div>
+              <div class="gr"><code class="pre">晴真|新作チーズケーキ焼けました
+17時までです</code><span>2行の投稿(「|」のない行は、前の投稿の続きになります)</span></div>
+              <p class="note">「|」は縦棒です(Shift+¥ / 全角の「｜」もOK)。投稿は「|」の左から キャラ名・本文・画像ファイル名 の順です。改行したいときは、そのまま次の行に続きを書いてください。画像のファイル名は、投稿の最後の行の終わりにつけてください(「続きの文|a.jpg」のように書いてもOKです)。</p>
+            </div>
+            <label class="f" for="postInput">投稿の入力</label>
+            <textarea id="postInput" rows="8" spellcheck="false" placeholder="晴真|新作チーズケーキ焼けました&#10;&gt;尊|食べたい&#10;&gt;晴真|取り置きしておく"></textarea>
+            <div class="quick" id="quick"></div>
+            <div class="row">
+              <button class="btn primary" id="btnGen" type="button">生成</button>
+              <button class="btn" id="btnReroll" type="button">数値を振り直す</button>
+            </div>
+            <div id="postStatus" class="sec" aria-live="polite"></div>
+          </div>
+          <div class="sec">
+            <h3>いいね・返信などの数値</h3>
+            <div class="seg" id="scaleSeg" role="group" aria-label="数値の規模">
+              <button type="button" data-scale="low" aria-pressed="false">控えめ</button>
+              <button type="button" data-scale="normal" aria-pressed="true">ふつう</button>
+              <button type="button" data-scale="viral" aria-pressed="false">バズ</button>
+            </div>
+            <p class="note">タイムラインの いいね・リポスト・ブックマークのマークを押すと、自分でつけたり外したりできます(数も1つ増減します)。</p>
+            <div class="row"><button class="btn small" id="btnClearMarks" type="button">押したマークを全部外す</button></div>
+          </div>
+          <div class="sec">
+            <h2>投稿に使う画像</h2>
+            <ol class="steps">
+              <li>「画像を追加」で写真を選ぶ</li>
+              <li>画像をつけたい投稿の行に、文字カーソルを置く</li>
+              <li>下に並んだ画像を押すと、その行の最後に <code>|ファイル名</code> が入ります</li>
+            </ol>
+            <p class="note">どのキャラの行にも付けられます。複数枚は <code>a.jpg,b.jpg</code> のように書きます(最大4枚)。画像はこのページを閉じると消えます。</p>
+            <div class="row">
+              <label class="btn" for="imgFiles">画像を追加</label>
+              <input type="file" id="imgFiles" accept="image/*" multiple hidden>
+            </div>
+            <div class="lib" id="imgLib"></div>
+          </div>
+        </div>
+
+        <!-- テーマ -->
+        <div class="pane" id="pane-theme" role="tabpanel" aria-labelledby="tab-theme" hidden>
+          <div class="sec">
+            <h2>テーマ</h2>
+            <div class="themes" id="themeList"></div>
+            <h3>表示モード</h3>
+            <div class="seg" id="modeSeg" role="group" aria-label="表示モード">
+              <button type="button" data-mode="dark" aria-pressed="true">ダーク</button>
+              <button type="button" data-mode="light" aria-pressed="false">ライト</button>
+            </div>
+            <h3>上のバー(メニュー・タブ・入力欄)</h3>
+            <div class="seg" id="headerSeg" role="group" aria-label="ヘッダー">
+              <button type="button" data-header="1" aria-pressed="true">あり</button>
+              <button type="button" data-header="0" aria-pressed="false">なし</button>
+            </div>
+            <h3>下のメニュー・投稿ボタン</h3>
+            <div class="seg" id="navSeg" role="group" aria-label="下のメニュー">
+              <button type="button" data-nav="1" aria-pressed="true">あり</button>
+              <button type="button" data-nav="0" aria-pressed="false">なし</button>
+            </div>
+            <h3>ロゴ(上の真ん中のマーク)</h3>
+            <div class="seg" id="logoSeg" role="group" aria-label="ロゴ">
+              <button type="button" data-logo="chick" aria-pressed="true">ひよこ</button>
+              <button type="button" data-logo="text" aria-pressed="false">文字</button>
+              <button type="button" data-logo="image" aria-pressed="false">画像</button>
+              <button type="button" data-logo="none" aria-pressed="false">なし</button>
+            </div>
+            <div class="sec" id="logoTextBox" hidden>
+              <label class="f" for="logoTextIn">好きな文字(1〜2文字。太字のゴシック体で表示します)<input type="text" id="logoTextIn" maxlength="2" value="Z" autocomplete="off"></label>
+              <div class="row" id="logoChips"></div>
+            </div>
+            <div class="sec" id="logoImgBox" hidden>
+              <div class="iconrow">
+                <div id="logoPrev" class="av-s" style="background:var(--raise);border:1px solid var(--line)"></div>
+                <label class="btn small" for="logoFile">画像を選ぶ</label>
+                <input type="file" id="logoFile" accept="image/*" hidden>
+              </div>
+              <p class="note">正方形に切り抜かれます。背景が透明なPNGだと、背景になじみます。</p>
+            </div>
+            <div class="seg" id="logoColorSeg" role="group" aria-label="ロゴの色">
+              <button type="button" data-logocolor="plain" aria-pressed="true">白黒</button>
+              <button type="button" data-logocolor="theme" aria-pressed="false">テーマの色</button>
+            </div>
+            <h3>Chick Talkだけのおまけ</h3>
+            <div class="seg" id="adsSeg" role="group" aria-label="広告風カード">
+              <button type="button" data-ads="1" aria-pressed="true">広告風カードあり</button>
+              <button type="button" data-ads="0" aria-pressed="false">なし</button>
+            </div>
+            <p class="note">Chick Talkは完全にオリジナルです。認証マークがひよこ型になり、4つの投稿ごとに、架空の会社(ひよこ堂など)の広告風カードが入ります。</p>
+            <p class="note">テーマごとに、本物のSNSアプリに近いレイアウトになります(ロゴはひよこマークで統一)。広告・トレンドは表示しません。</p>
+          </div>
+        </div>
+
+        <!-- 保存 -->
+        <div class="pane" id="pane-save" role="tabpanel" aria-labelledby="tab-save" hidden>
+          <div class="sec">
+            <h2>画像として保存</h2>
+            <p class="note">表示中のタイムラインを画像にします。長くなりすぎないよう、件数ごとに何枚かに区切れます。</p>
+            <h3>1枚に入れる件数</h3>
+            <div class="seg" id="splitSeg" role="group" aria-label="区切り">
+              <button type="button" data-split="1" aria-pressed="true">区切る</button>
+              <button type="button" data-split="0" aria-pressed="false">区切らない</button>
+            </div>
+            <div class="row" id="splitBox">
+              <label class="numl" for="splitN">1枚あたり <input type="number" id="splitN" min="3" max="100" step="1" value="10" inputmode="numeric"> 件まで</label>
+            </div>
+            <p class="note">返信つきの投稿は、スレッド全体を1件として数えます。途中では切れません。文字だけなら10件前後が、スマホ1〜2画面分で読みやすい長さです。画像つきの投稿は、3〜5件がおすすめです。</p>
+            <h3>画質</h3>
+            <div class="seg" id="qualSeg" role="group" aria-label="画質">
+              <button type="button" data-qual="hi" aria-pressed="true">高画質</button>
+              <button type="button" data-qual="mid" aria-pressed="false">ふつう</button>
+              <button type="button" data-qual="low" aria-pressed="false">圧縮</button>
+            </div>
+            <p class="note" id="qualNote"></p>
+            <div class="guide">
+              <b>保存される内容</b>
+              <p id="saveNote" class="savenote" aria-live="polite"></p>
+            </div>
+            <div class="bigsave">
+              <button class="btn primary" id="btnPng" type="button">PNG保存</button>
+              <button class="btn" id="btnJpg" type="button">JPG保存</button>
+            </div>
+            <p class="note">保存した画像の使い方は「ご利用にあたって」(ページ上部)に従ってください。個人で楽しむ範囲でお使いください。</p>
+            <p class="note">画像ができたら、表示された画像を長押し(PCは右クリック)して保存してください。</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="tl" id="tl" data-theme="chick" data-mode="dark" aria-label="タイムライン"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="sheet">
+    <h2 id="modalTitle" style="margin:0;font-family:var(--display);font-size:17px">画像ができました</h2>
+    <p class="note" id="resultInfo"></p>
+    <div class="pic" id="resultList"></div>
+    <div class="row end">
+      <button class="btn primary" id="btnClose" type="button">閉じる</button>
+    </div>
+  </div>
+</div>
+<div id="toast" hidden role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'birdtalk.v1';
+  var OLD_SAMPLE = '晴真|新作チーズケーキ焼けました\n尊|また店長が働いてる\n雪斗|休んでください\n夏蘭|本日20時から雑談配信';
+  var SAMPLE = '晴真|新作チーズケーキ焼けました\n>尊|食べたい\n>晴真|取り置きしておく\n尊|また店長が働いてる\n雪斗|休んでください\n夏蘭|本日20時から雑談配信';
+  var CHICK = '<svg viewBox="0 0 32 32" fill="currentColor" aria-label="Chick Talk"><path d="M7.3 11.9C8.6 6.4 12.6 3.4 17.2 3.4c4.2 0 7.2 2.6 8.4 6.4 2.7.1 4.4 1.9 4.4 5.6 0 7.4-5.4 13.2-13 13.2-7 0-10.8-4.8-10.6-10.6l.7-1.3-4.6-2.1 4.8-3.3z"/></svg>';
+  var THEMES = [
+    { id: 'chick', name: 'Chick Talk', desc: '標準。カード型', bg: '#14130e', fg: '#f4f1e6', mu: '#2a281f', ac: '#ffd24a', lbg: '#fffef8', lfg: '#1c1a12', lmu: '#ebe7d5' },
+    { id: 'x', name: 'X風', desc: 'Twitter風。右下ボタン', bg: '#000000', fg: '#e7e9ea', mu: '#2f3336', ac: '#1d9bf0', lbg: '#ffffff', lfg: '#0f1419', lmu: '#eff3f4' },
+    { id: 'bluesky', name: 'Bluesky風', desc: '三本線メニュー・みつけよう', bg: '#161e27', fg: '#f1f3f5', mu: '#2a3441', ac: '#208bfe', lbg: '#ffffff', lfg: '#0b0f14', lmu: '#d4dbe2' },
+    { id: 'threads', name: 'Threads風', desc: '名前だけ・ハート順', bg: '#101010', fg: '#f3f5f7', mu: '#2a2a2a', ac: '#0095f6', lbg: '#ffffff', lfg: '#000000', lmu: '#e6e6e6' }
+  ];
+  var ICON = {
+    reply: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20.5l1.5-4.7A8 8 0 1 1 21 12z"/>',
+    repost: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+    like: '<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6.1-8 11-8 11z"/>',
+    mark: '<path d="M6 3h12v18l-6-4.5L6 21z"/>',
+    share: '<path d="M14 5l6 6-6 6"/><path d="M20 11H9a5 5 0 0 0-5 5v2"/>',
+    more: '<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+    views: '<path d="M5 20V10M10 20V5M15 20v-8M20 20V8"/>',
+    send: '<path d="M21 3L10 14"/><path d="M21 3l-6.5 18-3.5-7-7-3.5z"/>',
+    home: '<path fill="currentColor" stroke="none" d="M12 3.2L3 10.8V21h6.3v-6h5.4v6H21V10.8z"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20.5l1.5-4.7A8 8 0 1 1 21 12z"/><circle cx="8.5" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="15.5" cy="12" r=".9" fill="currentColor" stroke="none"/>',
+    bell: '<path d="M6 17v-6a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/>',
+    mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',
+    people: '<circle cx="9" cy="9" r="3"/><path d="M3.5 19c.5-3 2.7-4.5 5.5-4.5s5 1.5 5.5 4.5"/><circle cx="17" cy="10" r="2.3"/><path d="M16 14.7c2.4 0 4 1.3 4.5 4"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    pencil: '<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>',
+    user: '<circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/>',
+    likef: '<path fill="currentColor" d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6.1-8 11-8 11z"/>',
+    chick: '<g transform="scale(.75)"><path d="M7.3 11.9C8.6 6.4 12.6 3.4 17.2 3.4c4.2 0 7.2 2.6 8.4 6.4 2.7.1 4.4 1.9 4.4 5.6 0 7.4-5.4 13.2-13 13.2-7 0-10.8-4.8-10.6-10.6l.7-1.3-4.6-2.1 4.8-3.3z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></g>',
+    chickf: '<g transform="scale(.75)"><path d="M7.3 11.9C8.6 6.4 12.6 3.4 17.2 3.4c4.2 0 7.2 2.6 8.4 6.4 2.7.1 4.4 1.9 4.4 5.6 0 7.4-5.4 13.2-13 13.2-7 0-10.8-4.8-10.6-10.6l.7-1.3-4.6-2.1 4.8-3.3z" fill="currentColor" stroke="none"/></g>',
+    markf: '<path fill="currentColor" d="M6 3h12v18l-6-4.5L6 21z"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    hash: '<path d="M9.5 4L7.5 20M16.5 4l-2 16M4 9h16M3.5 15h16"/>',
+    camera: '<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.3"/>',
+    image: '<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 18l5-5 4 4 2-2 3 3"/>'
+  };
+  var BADGE = '<svg class="bd" viewBox="0 0 24 24" aria-label="認証済み"><path fill="var(--tbadge)" d="M12 1.8l2.6 1.9 3.2-.1 1 3 2.6 1.9-1 3 1 3-2.6 1.9-1 3-3.2-.1L12 22.2l-2.6-1.9-3.2.1-1-3L2.6 15.5l1-3-1-3 2.6-1.9 1-3 3.2.1z"/><path d="M8 12.3l2.6 2.6L16 9.5" fill="none" stroke="var(--tcheck)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHICK_D = CHICK.match(/ d="([^"]+)"/)[1];
+  var BADGE_CHICK = '<svg class="bd" viewBox="0 0 24 24" aria-label="認証済み"><circle cx="12" cy="12" r="11" fill="var(--tbadge)"/><g transform="translate(4 4.1) scale(.5)"><path d="' + CHICK_D + '" fill="#2b2000"/></g></svg>';
+  var BADGE_S = BADGE.replace('class="bd"', 'style="width:16px;height:16px;flex:none"').replace('var(--tbadge)', '#ffd24a').replace('var(--tcheck)', '#3a2a00');
+
+  function $(s) { return document.querySelector(s); }
+  function uid() { return 'c' + Math.random().toString(36).slice(2, 9); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  var state = {
+    chars: [
+      { id: uid(), name: '晴真', handle: '@haruma', verified: true, icon: '' },
+      { id: uid(), name: '尊', handle: '@mikuriya', verified: true, icon: '' },
+      { id: uid(), name: '夏蘭', handle: '@ran_stream', verified: true, icon: '' }
+    ],
+    theme: 'chick', mode: 'dark', scale: 'normal', seed: 7, header: true, nav: true, ads: true, split: { on: true, n: 10 }, quality: 'hi', marks: {}, logo: { mode: 'chick', text: 'Z', img: '', color: 'plain' },
+    text: SAMPLE, gen: SAMPLE,
+    images: {}, unsel: {}, editing: null, pendingIcon: ''
+  };
+
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!d) return;
+      if (Array.isArray(d.chars)) state.chars = d.chars;
+      if (d.theme) state.theme = d.theme === 'birdtalk' ? 'chick' : d.theme;
+      if (d.scale) state.scale = d.scale;
+      if (typeof d.seed === 'number') state.seed = d.seed;
+      if (typeof d.header === 'boolean') state.header = d.header;
+      if (typeof d.nav === 'boolean') state.nav = d.nav;
+      if (typeof d.ads === 'boolean') state.ads = d.ads;
+      if (d.split && typeof d.split === 'object') {
+        if (typeof d.split.on === 'boolean') state.split.on = d.split.on;
+        var sn = parseInt(d.split.n, 10); if (sn >= 3 && sn <= 100) state.split.n = sn;
+      }
+      if (['hi', 'mid', 'low'].indexOf(d.quality) >= 0) state.quality = d.quality;
+      if (d.logo && typeof d.logo === 'object') {
+        var lo = d.logo;
+        if (['chick', 'text', 'image', 'none'].indexOf(lo.mode) >= 0) state.logo.mode = lo.mode;
+        if (typeof lo.text === 'string') state.logo.text = Array.from(lo.text).slice(0, 2).join('');
+        if (typeof lo.img === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(lo.img) && lo.img.length < 400000) state.logo.img = lo.img;
+        if (lo.color === 'theme' || lo.color === 'plain') state.logo.color = lo.color;
+      }
+      if (d.marks && typeof d.marks === 'object') state.marks = d.marks;
+      if (d.mode === 'light' || d.mode === 'dark') state.mode = d.mode;
+      if (typeof d.text === 'string') {
+        var tx = d.text === OLD_SAMPLE ? SAMPLE : d.text;
+        state.text = tx; state.gen = tx;
+      }
+    } catch (e) {}
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ chars: state.chars, theme: state.theme, scale: state.scale, seed: state.seed, header: state.header, nav: state.nav, ads: state.ads, split: state.split, quality: state.quality, logo: state.logo, marks: state.marks, mode: state.mode, text: state.text }));
+    } catch (e) { toast('ブラウザへの保存に失敗しました。バックアップを作って残してください'); }
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('#toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  /* ---------- 画像処理 ---------- */
+  function readImage(file, max, square, type, q) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = reject;
+      fr.onload = function () {
+        var img = new Image();
+        img.onerror = reject;
+        img.onload = function () {
+          var w = img.naturalWidth, h = img.naturalHeight, sx = 0, sy = 0, sw = w, sh = h, dw, dh;
+          if (square) { var m = Math.min(w, h); sx = (w - m) / 2; sy = (h - m) / 2; sw = sh = m; dw = dh = Math.min(max, m); }
+          else { var k = Math.min(1, max / w); dw = Math.round(w * k); dh = Math.round(h * k); }
+          var c = document.createElement('canvas'); c.width = dw; c.height = dh;
+          var x = c.getContext('2d');
+          if (type === 'image/jpeg') { x.fillStyle = '#fff'; x.fillRect(0, 0, dw, dh); }
+          x.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+          resolve(c.toDataURL(type, q));
+        };
+        img.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /* ---------- 解析 ---------- */
+  function imgKey(n) { return n.trim().toLowerCase(); }
+  function findImage(n) {
+    var k = imgKey(n);
+    if (state.images[k]) return state.images[k];
+    for (var key in state.images) { if (key.replace(/\.[^.]+$/, '') === k) return state.images[key]; }
+    return null;
+  }
+  function findChar(name) {
+    var n = name.trim(), h = '@' + n.replace(/^@/, '');
+    for (var i = 0; i < state.chars.length; i++) {
+      var c = state.chars[i];
+      if (c.name === n || c.handle === h) return c;
+    }
+    return null;
+  }
+  var IMG_EXT = /\.(jpe?g|png|gif|webp|avif)$/i;
+  function splitList(str) { return str.split(/[,、]/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function isImgList(str, strict) {
+    var l = splitList(str);
+    return l.length > 0 && l.every(function (x) { return strict ? !!findImage(x) : (IMG_EXT.test(x) || !!findImage(x)); });
+  }
+  function parse(text) {
+    var out = [], skipped = 0, cont = 0;
+    text.split(/\r?\n/).forEach(function (raw) {
+      var line = raw.trim(); if (!line) return;
+      var depth = 0, dm = line.match(/^[>＞]+/);
+      if (dm) { depth = dm[0].length; line = line.slice(depth).trim(); }
+      var parts = line.split(/[|｜]/);
+      var prev = out.length ? out[out.length - 1] : null;
+      /* 「プロフ|キャラ名」はプロフィール画面 */
+      if (depth === 0 && parts.length === 2 && /^プロフ(ィール)?$/.test(parts[0].trim()) && findChar(parts[1])) {
+        out.push({ name: findChar(parts[1]).name, text: '', images: [], depth: 0, profile: true });
+        return;
+      }
+      if (parts.length < 2) {
+        /* 「|」のない行は、前の投稿の続き(改行) */
+        if (depth === 0 && prev && !prev.profile) { prev.text += '\n' + line; cont++; }
+        else skipped++;
+        return;
+      }
+      /* 「本文の続き|画像.png|画像2.png」のように、登録キャラ名ではない行で、あとが全部画像なら、前の投稿の続きと画像 */
+      if (depth === 0 && prev && !prev.profile && parts[0].trim() && !findChar(parts[0]) && parts.slice(1).every(function (x) { return isImgList(x); })) {
+        prev.text += '\n' + parts[0].trim();
+        parts.slice(1).forEach(function (x) { prev.images = prev.images.concat(splitList(x)); });
+        cont++;
+        return;
+      }
+      if (!parts[0].trim()) { skipped++; return; }
+      var name = parts[0].trim(), imgs = [], end = parts.length - 1, quote = null;
+      /* うしろの「画像」「引用」の欄を集める(画像は「|」でも「,」でも複数枚OK) */
+      while (end > 1) {
+        var qm = parts[end].trim().match(/^引用[:：]\s*([^:：]+)[:：]([\s\S]*)$/);
+        if (qm && !quote) { quote = { name: qm[1].trim(), text: qm[2].trim() }; end--; }
+        else if (isImgList(parts[end])) { imgs = splitList(parts[end]).concat(imgs); end--; }
+        else break;
+      }
+      var body;
+      if (parts.length === 2 && isImgList(parts[1], true)) { imgs = splitList(parts[1]); body = ''; }
+      else body = parts.slice(1, end + 1).join('|').trim();
+      out.push({ name: name, text: body, images: imgs, depth: depth, quote: quote });
+    });
+    out.skipped = skipped; out.cont = cont;
+    return out;
+  }
+
+  /* ---------- 数値 ---------- */
+  function fmt(n) {
+    if (n <= 0) return '';
+    if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+    if (n >= 1000) return n.toLocaleString('en-US');
+    return String(n);
+  }
+  function ago(m) { return m < 60 ? m + '分' : m < 1440 ? Math.floor(m / 60) + '時間' : Math.floor(m / 1440) + '日'; }
+
+  /* ---------- タイムライン描画 ---------- */
+  function avatar(c, name) {
+    if (c && c.icon) return '<img class="av" src="' + c.icon + '" alt="">';
+    var ch = Array.from(name)[0] || '?';
+    return '<div class="av" style="background:hsl(' + (hash(name) % 360) + ' 38% 34%)">' + esc(ch) + '</div>';
+  }
+  function bodyHTML(t) {
+    return esc(t).replace(/(#[^\s#@|]+|@[A-Za-z0-9_]+)/g, '<span class="lk">$1</span>');
+  }
+  /* 画像を表示枠と同じ縦横比に切り抜く(書き出しで引き伸ばされないよう、枠に合わせた画像そのものを作る) */
+  function cropTo(m, ratio) {
+    if (!m.el) return m.src;
+    var key = ratio.toFixed(3);
+    if (m.crops[key]) return m.crops[key];
+    var W = m.w, H = m.h, sw, sh;
+    if (W / H > ratio) { sh = H; sw = H * ratio; } else { sw = W; sh = W / ratio; }
+    var ow = Math.min(960, Math.round(sw)), oh = Math.round(ow / ratio);
+    var c = document.createElement('canvas'); c.width = ow; c.height = oh;
+    c.getContext('2d').drawImage(m.el, (W - sw) / 2, (H - sh) / 2, sw, sh, 0, 0, ow, oh);
+    m.crops[key] = c.toDataURL('image/jpeg', 0.9);
+    return m.crops[key];
+  }
+  function mediaHTML(list) {
+    var ms = list.map(findImage).filter(Boolean).slice(0, 4), n = ms.length;
+    if (!n) return '';
+    var tiles = ms.map(function (m, i) {
+      var ratio = n === 1 ? Math.max(0.8, Math.min(2, m.w / m.h)) : (n === 3 && i === 0 ? 2 : 1);
+      return '<img src="' + cropTo(m, ratio) + '" alt="">';
+    });
+    return '<div class="media n' + n + '">' + tiles.join('') + '</div>';
+  }
+  function ic(n, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24">' + ICON[n] + '</svg>'; }
+  /* 押してつけ外しできるマーク。kind: l=いいね r=リポスト b=ブックマーク */
+  function tog(th, icon, n, kind, st) {
+    var on = kind === 'l' ? st.liked : kind === 'r' ? st.reposted : st.marked;
+    var cls = kind === 'l' ? 'liked' : kind === 'r' ? 'reposted' : 'marked';
+    var name = icon;
+    if (on && kind === 'l') name = th === 'chick' ? 'chickf' : 'likef';
+    if (on && kind === 'b') name = 'markf';
+    if (!on && kind === 'l' && th === 'chick') name = 'chick';
+    return '<div class="act tg' + (on ? ' ' + cls : '') + '" role="button" tabindex="0" aria-pressed="' + on + '" data-tg="' + kind + '" data-key="' + st.key + '" data-on="' + (on ? 1 : 0) + '">' + ic(name) + (n === null ? '' : '<span>' + fmt(n) + '</span>') + '</div>';
+  }
+  function act(icon, n) { return '<div class="act">' + ic(icon) + '<span>' + fmt(n) + '</span></div>'; }
+
+  function avSmall(c, name, px) {
+    if (c && c.icon) return '<img src="' + c.icon + '" alt="" style="width:' + px + 'px;height:' + px + 'px;border-radius:50%;object-fit:cover;flex:none;display:block">';
+    return '<div style="width:' + px + 'px;height:' + px + 'px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:700;font-size:' + Math.round(px * 0.45) + 'px;background:hsl(' + (hash(name) % 360) + ' 38% 34%)">' + esc(Array.from(name)[0] || '?') + '</div>';
+  }
+  function quoteHTML(q, th) {
+    if (!q) return '';
+    var c = findChar(q.name), handle = c ? c.handle : '@' + q.name;
+    var badge = c && c.verified ? (th === 'chick' ? BADGE_CHICK : BADGE_S) : '';
+    return '<div class="qt"><div class="qh">' + avSmall(c, q.name, 20) + '<span class="dn">' + esc(q.name) + '</span>' + badge + '<span class="qid">' + esc(handle) + '</span></div><div class="qb">' + bodyHTML(q.text) + '</div></div>';
+  }
+  function profHTML(c) {
+    var th = state.theme, r = rng(hash(c.name + '|prof|' + state.seed));
+    var fol = c.following > 0 ? c.following : Math.round(12 + r() * 380);
+    var fans = c.followers > 0 ? c.followers : Math.round(Math.pow(r(), 2.4) * 30000 + 40);
+    var joined = '2024年' + (1 + hash(c.name) % 12) + '月からChick Talkを利用しています';
+    var badge = c.verified ? (th === 'chick' ? BADGE_CHICK : BADGE) : '';
+    var bg = /^#[0-9a-f]{6}$/i.test(c.banner || '') ? c.banner : 'hsl(' + (hash(c.name) % 360) + ' 40% 38%)';
+    return '<div class="grp prof"><div class="pbn" style="background:' + bg + '">' + (th === 'chick' ? CHICK : '') + '</div>' +
+      '<div class="pinfo"><div class="prow"><div class="pav">' + avSmall(c, c.name, 76) + '</div><span class="pfollow">フォロー中</span></div>' +
+      '<div class="pnm"><span class="dn">' + esc(c.name) + '</span>' + badge + '</div><div class="phd">' + esc(c.handle) + '</div>' +
+      (c.bio ? '<div class="pbio">' + bodyHTML(c.bio) + '</div>' : '') +
+      '<div class="pjoin">' + joined + '</div>' +
+      '<div class="pst"><span><b>' + (fmt(fol) || '0') + '</b>フォロー中</span><span><b>' + (fmt(fans) || '0') + '</b>フォロワー</span></div></div>' +
+      '<div class="ptabs"><span class="on">ポスト</span><span>返信</span><span>メディア</span><span>いいね</span></div></div>';
+  }
+  var PIYO = ['ピヨッとつぶやく…', 'きょうのひとこと、どうぞ♪', 'おなかすいたピヨ？', 'ひよこ広場にピヨ〜', 'ねむい…ピヨ…'];
+  function meOf() { var me = state.chars[0] || null; return { c: me, n: me ? me.name : 'あ' }; }
+
+  function logoInner() {
+    var L = state.logo;
+    if (L.mode === 'none') return '';
+    if (L.mode === 'text' && L.text) return '<span class="lt' + (Array.from(L.text).length > 1 ? ' two' : '') + '">' + esc(L.text) + '</span>';
+    if (L.mode === 'image' && L.img) return '<img class="lg" src="' + L.img + '" alt="">';
+    return CHICK;
+  }
+  function logoHTML() {
+    var inner = logoInner();
+    return inner ? '<div class="logo' + (state.logo.color === 'theme' ? ' tc' : '') + '">' + inner + '</div>' : '';
+  }
+
+  function headerHTML() {
+    if (!state.header) return '';
+    var m = meOf(), th = state.theme, lg = logoHTML();
+    if (th === 'bluesky') {
+      return '<div class="th"><div class="bar">' + ic('menu') + lg + ic('hash') + '</div>' +
+        '<div class="tabs"><span class="on">フォロー中</span><span>みつけよう</span><span>ひよこ広場</span></div></div>' +
+        '<div class="cp">' + avSmall(m.c, m.n, 40) + '<span>最近どう？</span><span class="ics">' + ic('camera') + ic('image') + '</span></div>';
+    }
+    if (th === 'x') {
+      return '<div class="th"><div class="bar">' + avSmall(m.c, m.n, 30) + lg + '<span style="width:30px"></span></div>' +
+        '<div class="tabs"><span>おすすめ</span><span class="on">フォロー中</span></div></div>';
+    }
+    if (th === 'threads') {
+      return '<div class="th">' + (lg ? '<div class="bar">' + lg + '</div>' : '') +
+        '<div class="tabs"><span>おすすめ</span><span class="on">フォロー中</span></div></div>' +
+        '<div class="cp">' + avSmall(m.c, m.n, 36) + '<span>いまどうしてる？</span><span class="send">投稿</span></div>';
+    }
+    return '<div class="th"><div class="bar"><div class="logo' + (state.logo.color === 'theme' ? ' tc' : '') + '">' + logoInner() + '<span class="wm">Chick Talk</span></div><div class="ics2">' + ic('search') + ic('bell') + '</div></div>' +
+      '<div class="pills"><span class="on">ホーム</span><span>フォロー中</span></div></div>' +
+      '<div class="cp">' + avSmall(m.c, m.n, 34) + '<span>' + PIYO[state.seed % PIYO.length] + '</span><span class="send">ピヨ</span></div>';
+  }
+
+  function bottomHTML() {
+    if (!state.nav) return '';
+    var m = meOf(), th = state.theme, items = '', fab = '';
+    function ni(n, label, on) { return '<span class="ni' + (on ? ' on' : '') + '">' + ic(n) + (label ? '<small>' + label + '</small>' : '') + '</span>'; }
+    var plus = '<span class="ni"><span class="plus">' + ic('plus') + '</span></span>';
+    if (th === 'bluesky') {
+      items = ni('home') + ni('search') + ni('chat') + ni('bell') + '<span class="ni">' + avSmall(m.c, m.n, 28) + '</span>';
+      fab = '<div class="fab">' + ic('pencil') + '</div>';
+    } else if (th === 'x') {
+      items = ni('home') + ni('search') + ni('people') + ni('bell') + ni('mail');
+      fab = '<div class="fab">' + ic('plus') + '</div>';
+    } else if (th === 'threads') {
+      items = ni('home') + ni('search') + plus + ni('like') + ni('user');
+    } else {
+      items = ni('home', 'ホーム', true) + ni('search', 'さがす') + plus + ni('bell', 'おしらせ') + ni('user', 'マイ');
+    }
+    return '<div class="bt' + (fab ? ' hasfab' : '') + '">' + fab + '<nav class="nv">' + items + '</nav></div>';
+  }
+
+  function headHTML(th, shown, handle, verified, when, hot) {
+    var badge = verified ? (th === 'chick' ? BADGE_CHICK : BADGE) : '', n = '<span class="dn">' + esc(shown) + '</span>' + badge;
+    if (th === 'chick') return '<div class="ph">' + n + '<span class="tm">' + when + '</span></div><div class="sub">' + esc(handle) + (hot ? '<span class="hot">急上昇</span>' : '') + '</div>';
+    if (th === 'threads') return '<div class="ph">' + n + '<span class="tm">' + when + '</span><span class="more">' + ic('more') + '</span></div>';
+    if (th === 'x') return '<div class="ph">' + n + '<span class="hd">' + esc(handle) + '</span><span class="tm">' + when + '</span><span class="more">' + ic('more') + '</span></div>';
+    return '<div class="ph">' + n + '<span class="hd">' + esc(handle) + '</span><span class="tm">' + when + '</span></div>';
+  }
+  function actsHTML(th, st) {
+    var like = tog(th, 'like', st.likes, 'l', st), repost = tog(th, 'repost', st.rt, 'r', st);
+    if (th === 'x') return '<div class="acts">' + act('reply', st.rep) + repost + like + act('views', st.views) + '<div class="act2">' + tog(th, 'mark', null, 'b', st) + '<div class="act">' + ic('share') + '</div></div></div>';
+    if (th === 'bluesky') return '<div class="acts">' + act('reply', st.rep) + repost + like + tog(th, 'mark', st.bm, 'b', st) + '<div class="act">' + ic('share') + '</div><div class="act">' + ic('more') + '</div></div>';
+    if (th === 'threads') return '<div class="acts">' + like + act('reply', st.rep) + repost + '<div class="act">' + ic('send') + '</div></div>';
+    return '<div class="acts">' + act('reply', st.rep) + repost + like + tog(th, 'mark', st.bm, 'b', st) + '</div>';
+  }
+
+  var ADS = [
+    { brand: 'ひよこ堂', copy: '新作「ふわふわプリン」発売中。ひとくちで、ぴよっと笑顔。', cta: 'くわしく' },
+    { brand: 'ピヨピヨ電鉄', copy: '朝の混雑は「ひよこ席」におまかせ。始発から先着20名さま。', cta: '見てみる' },
+    { brand: 'たまご銀行', copy: 'ひよこ預金、はじめませんか。口座開設でもれなくヒヨコ豆。', cta: '開設する' },
+    { brand: 'もふもふ珈琲', copy: '今日の一杯に、あたたかい羽毛ラテを。本日限定。', cta: '注文する' }
+  ];
+  function adHTML(i) {
+    var a = ADS[(state.seed + i) % ADS.length];
+    return '<div class="grp ad"><div class="adh"><span class="pr">PR</span><span>' + esc(a.brand) + '</span></div>' +
+      '<div class="adrow"><div class="adimg">' + CHICK + '</div><div class="adtx">' + esc(a.copy) + '</div></div>' +
+      '<div class="adfoot"><span class="adcta">' + esc(a.cta) + '</span></div></div>';
+  }
+
+  var QUAL = {
+    hi: { scale: 2, jpg: 0.95, note: '高画質: 幅1200px。きれいですが、ファイルは大きめです。' },
+    mid: { scale: 1.5, jpg: 0.9, note: 'ふつう: 幅900px。きれいさと軽さのバランスがよい設定です。' },
+    low: { scale: 1, jpg: 0.75, note: '圧縮: 幅600px。ファイルが小さく、アップロードしやすい設定です(JPGは特に軽くなります)。' }
+  };
+
+  /* 投稿を「スレッド単位」のHTMLにする。返信つきのスレッドは1件として数える */
+  function buildGroups() {
+    var th = state.theme, posts = parse(state.gen), groups = [];
+    posts.forEach(function (p, i) {
+      p.idx = i;
+      if (p.depth > 0 && groups.length && !groups[groups.length - 1][0].profile) groups[groups.length - 1].push(p);
+      else groups.push([p]);
+    });
+    var mult = { low: 0.12, normal: 1, viral: 9 }[state.scale] || 1;
+    var minutes = 0, parts = [], est = [];
+    groups.forEach(function (g) {
+      if (g[0].profile) { parts.push(profHTML(findChar(g[0].name))); est.push(430); return; }
+      var gr = rng(hash(g[0].name + '|' + g[0].text + '|' + state.seed + '|g' + g[0].idx));
+      minutes += Math.floor(4 + gr() * 55);
+      var html = '<div class="grp">', e = th === 'chick' ? 24 : 0;
+      g.forEach(function (p, j) {
+        var c = findChar(p.name);
+        var r = rng(hash(p.name + '|' + p.text + '|' + state.seed + '|' + p.idx));
+        var k = j === 0 ? 1 : 0.35;
+        var likes = Math.round((Math.pow(r(), 2.2) * 3000 * mult + 2 + r() * 12) * k);
+        var rep = Math.round(likes * (0.03 + r() * 0.07));
+        if (j === 0) rep = Math.max(rep, g.length - 1);
+        var rt = Math.round(likes * (0.1 + r() * 0.25));
+        var bm = Math.round(likes * (0.04 + r() * 0.2));
+        var mins = j === 0 ? minutes : Math.max(1, minutes - j * Math.floor(2 + r() * 9));
+        var views = Math.round(likes * (14 + r() * 30)) + Math.round(r() * 80);
+        var rl = r() < 0.3, hot = th === 'chick' && j === 0 && likes >= 1500;
+        var key = hash(p.name + '|' + p.text).toString(36), mk = state.marks[key] || {};
+        var liked = mk.l === undefined ? rl : !!mk.l, reposted = !!mk.r, marked = !!mk.b;
+        var st = { rep: rep, rt: rt + (reposted ? 1 : 0), likes: likes + (liked ? 1 : 0), bm: bm + (marked ? 1 : 0), views: views, liked: liked, reposted: reposted, marked: marked, key: key };
+        var handle = c ? c.handle : '@' + p.name;
+        var shown = th === 'threads' ? handle.replace(/^@/, '') : p.name;
+        var cont = j < g.length - 1;
+        e += (th === 'chick' ? 150 : 105) + (p.quote ? 120 : 0) + (p.images.some(function (x) { return findImage(x); }) ? 420 : 0);
+        html += '<article class="post' + (cont ? ' cont' : '') + (j > 0 ? ' rep' : '') + '">' +
+          '<div class="avc">' + avatar(c, p.name) + (cont ? '<div class="ln"></div>' : '') + '</div>' +
+          '<div class="pm">' + headHTML(th, shown, handle, !!(c && c.verified), ago(mins), hot) +
+          '<div class="pb">' + bodyHTML(p.text) + '</div>' + mediaHTML(p.images) + quoteHTML(p.quote, th) +
+          actsHTML(th, st) + '</div></article>';
+      });
+      html += '</div>';
+      parts.push(html); est.push(e);
+    });
+    return { parts: parts, est: est };
+  }
+
+  /* 件数ごとに均等に区切る(例: 12件を10件で区切ると 6+6) */
+  function planChunks(total) {
+    var n = state.split.on ? state.split.n : 0;
+    if (!n || total <= n) return [[0, total]];
+    var k = Math.ceil(total / n), size = Math.ceil(total / k), out = [];
+    for (var i = 0; i < total; i += size) out.push([i, Math.min(total, i + size)]);
+    return out;
+  }
+
+  /* 1枚の画面(ヘッダー + 投稿 + 下のメニュー)を作る */
+  function assemble(parts) {
+    var html = headerHTML();
+    parts.forEach(function (g, i) {
+      html += g;
+      if (state.theme === 'chick' && state.ads && (i + 1) % 4 === 0 && i + 1 < parts.length) html += adHTML(i + 1);
+    });
+    return html + bottomHTML();
+  }
+
+  function updateSaveNote(b) {
+    var el = $('#saveNote'); if (!el) return;
+    b = b || buildGroups();
+    var total = b.parts.length;
+    if (!total) { el.className = 'savenote'; el.textContent = 'まだ投稿がありません。'; return; }
+    var ranges = planChunks(total), maxH = 0;
+    ranges.forEach(function (r) {
+      var h = (state.header ? 200 : 0) + (state.nav ? 90 : 0);
+      for (var i = r[0]; i < r[1]; i++) h += b.est[i];
+      if (h > maxH) maxH = h;
+    });
+    var sc = QUAL[state.quality].scale, limit = 14e6 / (600 * sc * sc);
+    var txt = '今は ' + total + ' 件です(返信つきのスレッドは1件として数えます)。';
+    if (ranges.length > 1) {
+      var sizes = ranges.map(function (r) { return r[1] - r[0]; });
+      txt += ranges.length + '枚に分けて保存します(1枚あたり ' + (ranges.length <= 6 ? sizes.join('・') : '約' + sizes[0]) + ' 件)。';
+    }
+    if (maxH > limit) { el.className = 'savenote warn'; txt += '1枚が長めなので、画質が自動で少し下がります。1枚あたりの件数を減らしてください。'; }
+    else { el.className = 'savenote'; txt += '1枚ずつ、選んだ画質のまま保存できます。'; }
+    el.textContent = txt;
+  }
+
+  function render() {
+    var tl = $('#tl');
+    tl.setAttribute('data-theme', state.theme);
+    tl.setAttribute('data-mode', state.mode);
+    var b = buildGroups();
+    if (!b.parts.length) {
+      tl.innerHTML = headerHTML() + '<div class="tl-empty">「投稿作成」に「キャラ名|本文」を入力して、生成を押してください。</div>' + bottomHTML();
+      updateSaveNote(b);
+      return;
+    }
+    var ranges = planChunks(b.parts.length), html = '';
+    ranges.forEach(function (r, i) {
+      if (ranges.length > 1) html += '<div class="cut">' + (i + 1) + '枚目 / 全' + ranges.length + '枚(' + (r[1] - r[0]) + '件)</div>';
+      html += assemble(b.parts.slice(r[0], r[1]));
+    });
+    tl.innerHTML = html;
+    updateSaveNote(b);
+  }
+
+  /* ---------- 投稿パネル ---------- */
+  function updateStatus() {
+    var posts = parse(state.text), unknown = [], missing = [];
+    posts.forEach(function (p) {
+      if (!findChar(p.name) && unknown.indexOf(p.name) < 0) unknown.push(p.name);
+      p.images.forEach(function (n) { if (!findImage(n) && missing.indexOf(n) < 0) missing.push(n); });
+    });
+    var h = '<span class="ok">投稿 ' + posts.length + ' 件' + (posts.cont ? ' / 前の投稿の続きの行 ' + posts.cont + ' 行' : '') + (posts.skipped ? ' / 読み取れない行 ' + posts.skipped + ' 行は無視されます' : '') + '</span>';
+    if (unknown.length) {
+      h += '<div class="row"><span class="ok">未登録:</span>' + unknown.map(function (n) { return '<button type="button" class="chip add" data-addchar="' + esc(n) + '">' + esc(n) + ' を登録</button>'; }).join('') + '</div>';
+    }
+    if (missing.length) h += '<span class="warn">画像が見つかりません: ' + missing.map(esc).join(', ') + '</span>';
+    $('#postStatus').innerHTML = h;
+  }
+  function renderLib() {
+    var keys = Object.keys(state.images);
+    $('#imgLib').innerHTML = keys.map(function (k) {
+      var m = state.images[k];
+      return '<figure><button type="button" class="thumb" data-insimg="' + esc(k) + '" aria-label="' + esc(m.name) + ' を現在の行に入れる"><img src="' + m.src + '" alt=""></button><button type="button" class="rm" data-rmimg="' + esc(k) + '" aria-label="' + esc(m.name) + ' を削除">×</button><figcaption>' + esc(m.name) + '</figcaption></figure>';
+    }).join('');
+  }
+
+  /* ---------- キャラ一覧 ---------- */
+  function avS(c) {
+    if (c.icon) return '<img class="av-s" src="' + c.icon + '" alt="">';
+    return '<div class="av-s" style="background:hsl(' + (hash(c.name) % 360) + ' 38% 34%)">' + esc(Array.from(c.name)[0] || '?') + '</div>';
+  }
+  function renderChars() {
+    var list = $('#charList');
+    if (!state.chars.length) { list.innerHTML = '<p class="note">キャラがいません。「新規キャラ追加」から登録してください。</p>'; return; }
+    list.innerHTML = state.chars.map(function (c) {
+      return '<div class="crow"><input type="checkbox" data-sel="' + c.id + '"' + (state.unsel[c.id] ? '' : ' checked') + ' aria-label="' + esc(c.name) + ' を書き出しに含める">' +
+        avS(c) + '<div class="meta"><div class="nm"><span>' + esc(c.name) + '</span>' + (c.verified ? BADGE_S : '') + '</div><div class="id">' + esc(c.handle) + '</div></div>' +
+        '<div class="ops"><button class="btn small" type="button" data-edit="' + c.id + '">編集</button><button class="btn small danger" type="button" data-del="' + c.id + '">削除</button></div></div>';
+    }).join('');
+  }
+  function setPreview(src, name) {
+    var p = $('#cPreview');
+    if (src) { p.style.background = 'none'; p.innerHTML = '<img src="' + src + '" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover">'; }
+    else { p.innerHTML = esc(Array.from(name || '')[0] || '?'); p.style.background = 'hsl(' + (hash(name || '?') % 360) + ' 38% 34%)'; }
+  }
+  var BANNERS = ['#f5b800', '#ff7a59', '#e5484d', '#e879a8', '#8b5cf6', '#3b82f6', '#14b8a6', '#4caf50', '#64748b', '#1c1c1c'];
+  function renderBannerSw() {
+    var cur = state.pendingBanner || '';
+    $('#bannerSw').innerHTML = '<button type="button" class="sw auto" data-banner="" aria-pressed="' + (cur === '') + '" aria-label="おまかせ"></button>' +
+      BANNERS.map(function (b) { return '<button type="button" class="sw" data-banner="' + b + '" style="--c:' + b + '" aria-pressed="' + (cur.toLowerCase() === b) + '" aria-label="' + b + '"></button>'; }).join('') +
+      '<input type="color" id="bannerPick" value="' + (/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#888888') + '" aria-label="好きな色を選ぶ">';
+  }
+  function openForm(c, prefillName) {
+    state.editing = c ? c.id : null;
+    $('#formTitle').textContent = c ? 'キャラを編集' : '新規キャラ追加';
+    $('#btnFormSave').textContent = c ? '更新' : '追加';
+    $('#cName').value = c ? c.name : (prefillName || '');
+    $('#cHandle').value = c ? c.handle : (prefillName ? '@' : '');
+    $('#cVerified').checked = c ? c.verified : true;
+    $('#cBio').value = c && c.bio ? c.bio : '';
+    $('#cFollowing').value = c && c.following > 0 ? c.following : '';
+    $('#cFollowers').value = c && c.followers > 0 ? c.followers : '';
+    state.pendingIcon = c ? c.icon : '';
+    state.pendingBanner = c && c.banner ? c.banner : '';
+    renderBannerSw();
+    setPreview(state.pendingIcon, $('#cName').value);
+    $('#formMsg').textContent = '';
+    $('#charForm').hidden = false;
+    $('#cName').focus();
+    $('#charForm').scrollIntoView({ block: 'nearest' });
+  }
+  function closeForm() { $('#charForm').hidden = true; state.editing = null; }
+  function afterCharsChange() { save(); renderChars(); renderQuick(); render(); updateStatus(); }
+
+  function submitChar(e) {
+    e.preventDefault();
+    var name = $('#cName').value.trim();
+    var handle = $('#cHandle').value.trim().replace(/^@+/, '').replace(/\s+/g, '');
+    if (!name) { $('#formMsg').textContent = '名前を入力してください。'; return; }
+    if (state.chars.some(function (c) { return c.name === name && c.id !== state.editing; })) { $('#formMsg').textContent = '同じ名前のキャラがすでにいます。'; return; }
+    var data = { name: name, handle: '@' + (handle || name), verified: $('#cVerified').checked, icon: state.pendingIcon || '', bio: $('#cBio').value.trim().slice(0, 160), following: Math.max(0, parseInt($('#cFollowing').value, 10) || 0), followers: Math.max(0, parseInt($('#cFollowers').value, 10) || 0), banner: state.pendingBanner || '' };
+    var wasEditing = !!state.editing;
+    if (wasEditing) {
+      var c = state.chars.filter(function (x) { return x.id === state.editing; })[0];
+      if (c) { c.name = data.name; c.handle = data.handle; c.verified = data.verified; c.icon = data.icon; c.bio = data.bio; c.following = data.following; c.followers = data.followers; c.banner = data.banner; }
+    } else {
+      data.id = uid(); state.chars.push(data);
+    }
+    closeForm(); afterCharsChange();
+    toast(wasEditing ? 'キャラを更新しました' : 'キャラを登録しました');
+  }
+
+  /* ---------- JSON ---------- */
+  function exportJson() {
+    var chars = state.chars.filter(function (c) { return !state.unsel[c.id]; }).map(function (c) {
+      return { name: c.name, handle: c.handle, verified: !!c.verified, icon: c.icon || '', bio: c.bio || '', following: c.following || 0, followers: c.followers || 0, banner: c.banner || '' };
+    });
+    if (!chars.length) { toast('バックアップに入れるキャラにチェックを入れてください'); return; }
+    var obj = { app: 'ChickTalk', version: 1, setName: $('#setName').value.trim() || 'バックアップ', characters: chars };
+    var s = JSON.stringify(obj, null, 2);
+    $('#jsonOut').value = s;
+    toast('バックアップを作りました(' + chars.length + '人)。コピーして保管してください');
+  }
+  function copyFrom(el, label) {
+    var text = el.value;
+    if (!text) { toast('コピーする内容がありません'); return; }
+    var fallback = function () { el.focus(); el.select(); toast('選択しました。コピーしてください'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(label + 'をコピーしました'); }, fallback);
+    } else fallback();
+  }
+  var ICON_OK = /^data:image\/(png|jpe?g|webp|gif);base64,/;
+  function importJson() {
+    var msg = $('#impMsg'); msg.style.color = 'var(--danger)';
+    var d;
+    try { d = JSON.parse($('#jsonIn').value); } catch (e) { msg.textContent = 'バックアップを読み取れませんでした。コピーした文字をそのまま貼り付けてください。'; return; }
+    var src = Array.isArray(d) ? d : (d && d.characters);
+    if (!Array.isArray(src) || !src.length) { msg.textContent = 'キャラのデータが見つかりません。'; return; }
+    var incoming = [];
+    src.forEach(function (x) {
+      if (!x || typeof x.name !== 'string' || !x.name.trim()) return;
+      var h = typeof x.handle === 'string' ? x.handle.trim().replace(/^@+/, '').replace(/\s+/g, '') : '';
+      var name = x.name.trim().slice(0, 30);
+      incoming.push({
+        name: name, handle: '@' + (h.slice(0, 30) || name), verified: !!x.verified,
+        bio: typeof x.bio === 'string' ? x.bio.slice(0, 160) : '', following: Math.max(0, parseInt(x.following, 10) || 0), followers: Math.max(0, parseInt(x.followers, 10) || 0), banner: /^#[0-9a-f]{6}$/i.test(x.banner || '') ? x.banner : '',
+        icon: (typeof x.icon === 'string' && ICON_OK.test(x.icon) && x.icon.length < 500000) ? x.icon : ''
+      });
+    });
+    if (!incoming.length) { msg.textContent = '復元できるキャラがありませんでした。'; return; }
+    if ($('#impReplace').checked) state.chars = [];
+    var added = 0, updated = 0;
+    incoming.forEach(function (n) {
+      var ex = state.chars.filter(function (c) { return c.name === n.name; })[0];
+      if (ex) { ex.handle = n.handle; ex.verified = n.verified; ex.icon = n.icon; ex.bio = n.bio; ex.following = n.following; ex.followers = n.followers; ex.banner = n.banner; updated++; }
+      else { n.id = uid(); state.chars.push(n); added++; }
+    });
+    state.unsel = {};
+    if (d && d.setName && typeof d.setName === 'string') $('#setName').value = d.setName.slice(0, 40);
+    afterCharsChange();
+    msg.style.color = 'var(--muted)';
+    msg.textContent = '復元しました(追加 ' + added + '人・更新 ' + updated + '人)';
+  }
+
+  /* ---------- 保存(画像化) ---------- */
+  var results = [];
+  function revokeResults() { results.forEach(function (r) { URL.revokeObjectURL(r.url); }); results = []; }
+  function makeImages(type) {
+    if (!window.html2canvas) { toast('画像ライブラリを読み込めませんでした。通信を確認して再読み込みしてください'); return; }
+    var b = buildGroups();
+    if (!b.parts.length) { toast('投稿がありません。先に生成してください'); return; }
+    var ranges = planChunks(b.parts.length), q = QUAL[state.quality], W = 600, i = 0;
+    var mime = type === 'jpg' ? 'image/jpeg' : 'image/png';
+    var btns = [$('#btnPng'), $('#btnJpg')], labels = btns.map(function (x) { return x.textContent; });
+    btns.forEach(function (x) { x.disabled = true; });
+    revokeResults();
+    function one() {
+      if (i >= ranges.length) return Promise.resolve();
+      btns.forEach(function (x) { x.textContent = '作成中… ' + (i + 1) + '/' + ranges.length; });
+      var r = ranges[i];
+      var holder = document.createElement('div');
+      holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + W + 'px';
+      var el = document.createElement('div');
+      el.className = 'tl';
+      el.setAttribute('data-theme', state.theme); el.setAttribute('data-mode', state.mode);
+      el.style.width = W + 'px'; el.style.maxWidth = W + 'px';
+      el.innerHTML = assemble(b.parts.slice(r[0], r[1]));
+      holder.appendChild(el); document.body.appendChild(holder);
+      var bg = getComputedStyle(el).backgroundColor, H = el.offsetHeight, s = q.scale;
+      while (W * s * H * s > 14e6 && s > 0.5) s -= 0.1;
+      return window.html2canvas(el, { backgroundColor: bg, scale: s, useCORS: true, logging: false, scrollX: 0, scrollY: 0 }).then(function (canvas) {
+        return new Promise(function (res) { canvas.toBlob(function (bl) { res({ blob: bl, canvas: canvas }); }, mime, q.jpg); });
+      }).then(function (o) {
+        holder.remove();
+        if (!o.blob) throw new Error('blob');
+        results.push({ blob: o.blob, url: URL.createObjectURL(o.blob), w: o.canvas.width, h: o.canvas.height, lowered: s < q.scale - 0.05, type: type });
+        i++;
+        return one();
+      }, function (err) { holder.remove(); throw err; });
+    }
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(one).then(showResults).catch(function () {
+      revokeResults(); toast('画像の作成に失敗しました。1枚あたりの件数を減らして試してください');
+    }).then(function () {
+      btns.forEach(function (x, k) { x.disabled = false; x.textContent = labels[k]; });
+    });
+  }
+  function showResults() {
+    var n = results.length;
+    $('#resultList').innerHTML = results.map(function (r, i) {
+      return '<figure class="rf"><figcaption>' + (n > 1 ? (i + 1) + '枚目 / 全' + n + '枚 ・ ' : '') + r.w + '×' + r.h + 'px ・ ' + (r.type === 'jpg' ? 'JPG' : 'PNG') + ' ・ 約' + Math.ceil(r.blob.size / 1024) + 'KB' + (r.lowered ? '(長いため画質を少し下げています)' : '') + '</figcaption>' +
+        '<img src="' + r.url + '" alt="' + (i + 1) + '枚目の画像"><button type="button" class="btn small" data-copyimg="' + i + '">この画像をコピー</button></figure>';
+    }).join('');
+    $('#resultInfo').textContent = (n > 1 ? n + '枚できました。1枚ずつ' : '') + '画像を長押し(PCは右クリック)して保存してください。';
+    $('#modal').hidden = false; $('#btnClose').focus();
+  }
+  function closeModal() { $('#modal').hidden = true; revokeResults(); $('#resultList').innerHTML = ''; }
+  function copyResult(i) {
+    var r = results[i];
+    if (!r || !navigator.clipboard || !window.ClipboardItem) { toast('このブラウザでは画像のコピーができません。長押しで保存してください'); return; }
+    var item = {}; item[r.blob.type] = r.blob;
+    navigator.clipboard.write([new ClipboardItem(item)]).then(function () { toast('画像をコピーしました'); }, function () { toast('コピーできませんでした。長押しで保存してください'); });
+  }
+  function renderSaveUI() {
+    document.querySelectorAll('#splitSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String((x.getAttribute('data-split') === '1') === state.split.on)); });
+    document.querySelectorAll('#qualSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-qual') === state.quality)); });
+    $('#splitBox').hidden = !state.split.on;
+    var inp = $('#splitN'); if (document.activeElement !== inp) inp.value = state.split.n;
+    $('#qualNote').textContent = QUAL[state.quality].note;
+  }
+
+  /* ---------- タブ・テーマ ---------- */
+  function showTab(id) {
+    document.querySelectorAll('.tab').forEach(function (t) { t.setAttribute('aria-selected', String(t.getAttribute('data-tab') === id)); });
+    document.querySelectorAll('.pane').forEach(function (p) { p.hidden = p.id !== 'pane-' + id; });
+    var panes = document.querySelector('.panes'); if (panes) panes.scrollTop = 0;
+  }
+  function renderThemes() {
+    var dk = state.mode !== 'light';
+    $('#themeList').innerHTML = THEMES.map(function (t0) {
+      var t = { id: t0.id, name: t0.name, desc: t0.desc, ac: t0.ac, bg: dk ? t0.bg : t0.lbg, fg: dk ? t0.fg : t0.lfg, mu: dk ? t0.mu : t0.lmu };
+      return '<button type="button" class="tcard" data-theme="' + t.id + '" aria-pressed="' + (state.theme === t.id) + '">' +
+        '<div class="mini" style="background:' + t.bg + '"><i style="background:' + t.ac + '"></i><div style="flex:1"><u style="width:55%;background:' + t.fg + '"></u><u style="width:90%;background:' + t.mu + '"></u><u style="width:70%;background:' + t.mu + '"></u></div></div>' +
+        '<b>' + t.name + '</b><small>' + t.desc + '</small></button>';
+    }).join('');
+  }
+  function renderQuick() {
+    var h = '<span class="ok">キャラを押すと新しい行に入ります:</span>';
+    h += state.chars.map(function (c) { return '<button type="button" class="chip" data-line="' + esc(c.name) + '">' + esc(c.name) + '</button>'; }).join('');
+    h += '<button type="button" class="chip mono" data-ins="|" aria-label="縦棒を入れる">|</button>';
+    h += '<button type="button" class="chip" data-ins="&gt;">&gt; 返信にする</button>';
+    h += '<button type="button" class="chip" data-tpl="quote">引用ポスト</button>';
+    h += '<button type="button" class="chip" data-tpl="prof">プロフィール</button>';
+    $('#quick').innerHTML = h;
+  }
+  function syncText() { var ta = $('#postInput'); state.text = ta.value; save(); updateStatus(); }
+  function addLine(name) {
+    var ta = $('#postInput'), v = ta.value.replace(/\s+$/, '');
+    ta.value = (v ? v + '\n' : '') + name + '|';
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); syncText();
+  }
+  function addTemplate(kind) {
+    var a = state.chars[0] ? state.chars[0].name : 'キャラ名', b = state.chars[1] ? state.chars[1].name : a;
+    var line = kind === 'quote' ? a + '|ひとこと|引用:' + b + ':引用したい本文' : 'プロフ|' + a;
+    var ta = $('#postInput'), v = ta.value.replace(/\s+$/, '');
+    ta.value = (v ? v + '\n' : '') + line;
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); syncText();
+  }
+  function insertSym(sym) {
+    var ta = $('#postInput'), v = ta.value, s0 = ta.selectionStart == null ? v.length : ta.selectionStart, e0 = ta.selectionEnd == null ? s0 : ta.selectionEnd;
+    if (sym === '>') {
+      var st = v.lastIndexOf('\n', s0 - 1) + 1;
+      ta.value = v.slice(0, st) + '>' + v.slice(st);
+      ta.focus(); ta.setSelectionRange(s0 + 1, s0 + 1);
+    } else {
+      ta.value = v.slice(0, s0) + sym + v.slice(e0);
+      ta.focus(); ta.setSelectionRange(s0 + 1, s0 + 1);
+    }
+    syncText();
+  }
+  function renderModeSeg() {
+    document.querySelectorAll('#modeSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-mode') === state.mode)); });
+  }
+  var LOGO_CHIPS = ['Z', '@', 'つ', '蝶', 'ピ', '♪'];
+  function renderLogoUI() {
+    var L = state.logo;
+    document.querySelectorAll('#logoSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-logo') === L.mode)); });
+    document.querySelectorAll('#logoColorSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-logocolor') === L.color)); });
+    $('#logoTextBox').hidden = L.mode !== 'text';
+    $('#logoImgBox').hidden = L.mode !== 'image';
+    $('#logoColorSeg').hidden = !(L.mode === 'chick' || L.mode === 'text');
+    var inp = $('#logoTextIn'); if (inp.value !== L.text) inp.value = L.text;
+    $('#logoChips').innerHTML = LOGO_CHIPS.map(function (c) { return '<button type="button" class="chip" data-logotext="' + esc(c) + '">' + esc(c) + '</button>'; }).join('');
+    var pv = $('#logoPrev');
+    pv.innerHTML = L.img ? '<img src="' + L.img + '" alt="" style="width:40px;height:40px;object-fit:contain;display:block">' : '';
+  }
+  function renderAdsSeg() {
+    document.querySelectorAll('#adsSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-ads') === '1') === state.ads)); });
+  }
+  function renderNavSeg() {
+    document.querySelectorAll('#navSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-nav') === '1') === state.nav)); });
+  }
+  function renderHeaderSeg() {
+    document.querySelectorAll('#headerSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-header') === '1') === state.header)); });
+  }
+  function insertImage(key) {
+    var m = state.images[key]; if (!m) return;
+    var ta = $('#postInput'), v = ta.value, pos = ta.selectionStart == null ? v.length : ta.selectionStart;
+    var lines = v.split('\n'), idx = v.slice(0, pos).split('\n').length - 1;
+    /* 2行目以降にカーソルがあるときは、投稿のいちばん上の行(「キャラ名|」のある行)に入れる */
+    var k = idx;
+    while (k >= 0 && !/[|｜]/.test(lines[k])) k--;
+    if (k < 0) { toast('先に「キャラ名|本文」の行にカーソルを置いてください'); return; }
+    lines[k] = lines[k].replace(/\s+$/, '') + '|' + m.name;
+    ta.value = lines.join('\n');
+    state.text = ta.value; state.gen = state.text; save(); updateStatus(); render();
+    toast(m.name + ' を入れました');
+  }
+  function renderScale() {
+    document.querySelectorAll('#scaleSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-scale') === state.scale)); });
+  }
+
+  /* ---------- イベント ---------- */
+  function toggleMark(el) {
+    var key = el.getAttribute('data-key'), kind = el.getAttribute('data-tg'), on = el.getAttribute('data-on') === '1';
+    var m = state.marks[key] || {};
+    m[kind] = on ? 0 : 1;
+    state.marks[key] = m; save(); render();
+  }
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('#tl [data-tg]')) { e.preventDefault(); toggleMark(e.target.closest('[data-tg]')); }
+  });
+  var delTimer = null;
+  document.addEventListener('click', function (e) {
+    var tgEl = e.target.closest('[data-tg]');
+    if (tgEl && tgEl.closest('#tl')) { toggleMark(tgEl); return; }
+    var t = e.target.closest('button, .tab'); if (!t) return;
+    if (t.hasAttribute('data-tab')) return showTab(t.getAttribute('data-tab'));
+    if (t.hasAttribute('data-theme')) { state.theme = t.getAttribute('data-theme'); save(); renderThemes(); render(); return; }
+    if (t.hasAttribute('data-mode')) { state.mode = t.getAttribute('data-mode'); save(); renderModeSeg(); renderThemes(); render(); return; }
+    if (t.hasAttribute('data-line')) { addLine(t.getAttribute('data-line')); return; }
+    if (t.hasAttribute('data-banner')) { state.pendingBanner = t.getAttribute('data-banner'); renderBannerSw(); return; }
+    if (t.hasAttribute('data-tpl')) { addTemplate(t.getAttribute('data-tpl')); return; }
+    if (t.hasAttribute('data-ins')) { insertSym(t.getAttribute('data-ins')); return; }
+    if (t.hasAttribute('data-split')) { state.split.on = t.getAttribute('data-split') === '1'; save(); renderSaveUI(); render(); return; }
+    if (t.hasAttribute('data-qual')) { state.quality = t.getAttribute('data-qual'); save(); renderSaveUI(); render(); return; }
+    if (t.hasAttribute('data-copyimg')) { copyResult(parseInt(t.getAttribute('data-copyimg'), 10)); return; }
+    if (t.hasAttribute('data-ads')) { state.ads = t.getAttribute('data-ads') === '1'; save(); renderAdsSeg(); render(); return; }
+    if (t.hasAttribute('data-logo')) { state.logo.mode = t.getAttribute('data-logo'); save(); renderLogoUI(); render(); return; }
+    if (t.hasAttribute('data-logocolor')) { state.logo.color = t.getAttribute('data-logocolor'); save(); renderLogoUI(); render(); return; }
+    if (t.hasAttribute('data-logotext')) { state.logo.text = t.getAttribute('data-logotext'); state.logo.mode = 'text'; save(); renderLogoUI(); render(); return; }
+    if (t.hasAttribute('data-nav')) { state.nav = t.getAttribute('data-nav') === '1'; save(); renderNavSeg(); render(); return; }
+    if (t.hasAttribute('data-header')) { state.header = t.getAttribute('data-header') === '1'; save(); renderHeaderSeg(); render(); return; }
+    if (t.hasAttribute('data-insimg')) { insertImage(t.getAttribute('data-insimg')); return; }
+    if (t.hasAttribute('data-scale')) { state.scale = t.getAttribute('data-scale'); save(); renderScale(); render(); return; }
+    if (t.hasAttribute('data-edit')) { var c = state.chars.filter(function (x) { return x.id === t.getAttribute('data-edit'); })[0]; if (c) openForm(c); return; }
+    if (t.hasAttribute('data-del')) {
+      if (t.getAttribute('data-armed')) {
+        var id = t.getAttribute('data-del');
+        state.chars = state.chars.filter(function (x) { return x.id !== id; }); delete state.unsel[id];
+        if (state.editing === id) closeForm();
+        afterCharsChange(); toast('削除しました');
+      } else {
+        document.querySelectorAll('[data-armed]').forEach(function (b) { b.removeAttribute('data-armed'); b.textContent = '削除'; });
+        t.setAttribute('data-armed', '1'); t.textContent = '本当に削除';
+        clearTimeout(delTimer); delTimer = setTimeout(function () { if (t.isConnected) { t.removeAttribute('data-armed'); t.textContent = '削除'; } }, 3000);
+      }
+      return;
+    }
+    if (t.hasAttribute('data-addchar')) { showTab('chars'); openForm(null, t.getAttribute('data-addchar')); return; }
+    if (t.hasAttribute('data-rmimg')) { delete state.images[t.getAttribute('data-rmimg')]; renderLib(); updateStatus(); render(); return; }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-sel')) { var id = t.getAttribute('data-sel'); if (t.checked) delete state.unsel[id]; else state.unsel[id] = true; }
+  });
+
+  $('#btnNewChar').addEventListener('click', function () { openForm(null); });
+  $('#btnFormCancel').addEventListener('click', closeForm);
+  $('#charForm').addEventListener('submit', submitChar);
+  $('#cName').addEventListener('input', function () { if (!state.pendingIcon) setPreview('', this.value); });
+  $('#cIcon').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    readImage(f, 160, true, 'image/jpeg', 0.86).then(function (src) { state.pendingIcon = src; setPreview(src, $('#cName').value); }, function () { $('#formMsg').textContent = '画像を読み込めませんでした。'; });
+    this.value = '';
+  });
+  $('#btnIconClear').addEventListener('click', function () { state.pendingIcon = ''; setPreview('', $('#cName').value); });
+
+  $('#btnExport').addEventListener('click', exportJson);
+  $('#btnCopyJson').addEventListener('click', function () { copyFrom($('#jsonOut'), 'バックアップ'); });
+  $('#btnImport').addEventListener('click', importJson);
+  $('#jsonFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () { $('#jsonIn').value = String(fr.result); toast('読み込みました。「復元する」を押してください'); };
+    fr.readAsText(f); this.value = '';
+  });
+
+  $('#postInput').addEventListener('input', function () { state.text = this.value; save(); updateStatus(); });
+  $('#btnGen').addEventListener('click', function () { state.gen = state.text; render(); toast('タイムラインを生成しました'); });
+  $('#logoTextIn').addEventListener('input', function () {
+    state.logo.text = Array.from(this.value).slice(0, 2).join(''); save(); render();
+  });
+  $('#logoFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return; this.value = '';
+    readImage(f, 160, true, 'image/png', 1).then(function (src) {
+      state.logo.img = src; state.logo.mode = 'image'; save(); renderLogoUI(); render(); toast('ロゴの画像を変えました');
+    }, function () { toast('画像を読み込めませんでした'); });
+  });
+  $('#btnClearMarks').addEventListener('click', function () { state.marks = {}; save(); render(); toast('マークを外しました'); });
+  $('#btnReroll').addEventListener('click', function () { state.seed = (state.seed * 31 + 17) % 100000; state.gen = state.text; save(); render(); });
+  $('#imgFiles').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files || []); this.value = '';
+    Promise.all(files.map(function (f) {
+      return readImage(f, 960, false, 'image/jpeg', 0.86).then(function (src) {
+        return new Promise(function (res, rej) {
+          var el = new Image();
+          el.onload = function () { state.images[imgKey(f.name)] = { name: f.name, src: src, el: el, w: el.naturalWidth, h: el.naturalHeight, crops: {} }; res(); };
+          el.onerror = rej;
+          el.src = src;
+        });
+      });
+    })).then(function () { renderLib(); updateStatus(); render(); toast(files.length + '枚の画像を追加しました'); }, function () { toast('読み込めない画像がありました'); });
+  });
+
+  $('#btnPng').addEventListener('click', function () { makeImages('png'); });
+  $('#btnJpg').addEventListener('click', function () { makeImages('jpg'); });
+  $('#btnClose').addEventListener('click', closeModal);
+  document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'bannerPick') { state.pendingBanner = e.target.value; document.querySelectorAll('#bannerSw .sw').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); }); }
+  });
+  $('#splitN').addEventListener('input', function () {
+    var v = parseInt(this.value, 10);
+    if (v >= 3 && v <= 100) { state.split.n = v; save(); render(); }
+  });
+  $('#splitN').addEventListener('change', function () {
+    var v = parseInt(this.value, 10); if (!(v >= 3)) v = 3; if (v > 100) v = 100;
+    this.value = v; state.split.n = v; save(); render();
+  });
+  $('#modal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#modal').hidden) closeModal(); });
+
+  /* ---------- 起動 ---------- */
+  load();
+  $('#postInput').value = state.text;
+  renderChars(); renderQuick(); renderThemes(); renderScale(); renderModeSeg(); renderHeaderSeg(); renderNavSeg(); renderAdsSeg(); renderLogoUI(); renderSaveUI(); renderLib(); updateStatus(); render();
+})();
+</script>
+</html>
