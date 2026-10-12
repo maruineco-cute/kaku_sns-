@@ -173,6 +173,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .qh .qid { color: var(--tmuted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qb { margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
 .tl[data-theme="chick"] .qt { border-radius: 16px; border-style: dashed; background: var(--tsoft); }
+/* 投稿が少ないとき、スマホ画面の縦横比(9:19.5)にそろえる */
+.tl.fill { display: flex; flex-direction: column; }
+.tl.fill .bt { margin-top: auto; }
 /* ご利用にあたって */
 .terms { margin: 8px 16px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--raise); font-size: 12px; color: var(--muted); }
 .terms summary { cursor: pointer; padding: 9px 12px; list-style: none; }
@@ -383,6 +386,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .tl[data-theme="chick"] .plus .i { width: 24px; height: 24px; }
 .tl[data-theme="chick"] .nv { padding-top: 6px; }
 .tl[data-theme="chick"] .ad { padding: 12px 14px; background: var(--tad); display: flex; flex-direction: column; gap: 10px; }
+.tl[data-theme="chick"] .nt { padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.nt .ntic { width: 30px; height: 30px; border-radius: 50%; background: var(--tbadge); color: #2b2000; display: grid; place-items: center; flex: none; }
+.nt .ntic svg { width: 20px; height: 20px; }
+.nt .ntx { flex: 1; min-width: 0; line-height: 1.4; }
+.nt .nttm { color: var(--tmuted); font-size: 12px; flex: none; }
 .adh { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .pr { border: 1px solid var(--tmuted); border-radius: 4px; padding: 0 6px; font-size: 10px; line-height: 16px; color: var(--tmuted); font-weight: 500; }
 .adrow { display: flex; gap: 12px; align-items: center; }
@@ -508,6 +516,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
               <div class="gr"><code>キャラ名|本文|a.jpg|b.jpg</code><span>画像を2枚(最大4枚。「|」でつなぎます)</span></div>
               <div class="gr"><code>&gt;キャラ名|本文</code><span>直前の投稿への返信</span></div>
               <div class="gr"><code>キャラ名|本文|引用:相手の名前:相手の本文</code><span>引用ポスト(相手の投稿を枠でかこんで見せます)</span></div>
+              <div class="gr"><code>キャラ名|本文|♡1200|返信30|RT300</code><span>数字を自分で決める(♡=いいね、返信、RT、ブクマ、表示。「1.2万」「3千」もOK。書かない数字は自動)</span></div>
               <div class="gr"><code>プロフ|キャラ名</code><span>そのキャラのプロフィール画面。次の行から投稿を続けられます</span></div>
               <div class="gr"><code class="pre">晴真|新作チーズケーキ焼けました
 17時までです</code><span>2行の投稿(「|」のない行は、前の投稿の続きになります)</span></div>
@@ -596,7 +605,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
               <button type="button" data-ads="1" aria-pressed="true">広告風カードあり</button>
               <button type="button" data-ads="0" aria-pressed="false">なし</button>
             </div>
-            <p class="note">Chick Talkは完全にオリジナルです。認証マークがひよこ型になり、4つの投稿ごとに、架空の会社(ひよこ堂など)の広告風カードが入ります。</p>
+            <p class="note">Chick Talkは完全にオリジナルです。認証マークがひよこ型になり、4つの投稿ごとに、架空の会社(ひよこ堂、たまご農園、羽毛ふとん店など)の広告風カードが入ります。</p>
+            <div class="seg" id="pokeSeg" role="group" aria-label="つつかれ通知">
+              <button type="button" data-poke="1" aria-pressed="true">つつかれ通知あり</button>
+              <button type="button" data-poke="0" aria-pressed="false">なし</button>
+            </div>
+            <p class="note">投稿の途中に「○○さんがあなたをつつきました」のような、小さな通知カードが入ります(5件ごと)。キャラの名前が使われます。</p>
             <p class="note">テーマごとに、本物のSNSアプリに近いレイアウトになります(ロゴはひよこマークで統一)。広告・トレンドは表示しません。</p>
           </div>
         </div>
@@ -615,6 +629,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
               <label class="numl" for="splitN">1枚あたり <input type="number" id="splitN" min="3" max="100" step="1" value="10" inputmode="numeric"> 件まで</label>
             </div>
             <p class="note">返信つきの投稿は、スレッド全体を1件として数えます。途中では切れません。文字だけなら10件前後が、スマホ1〜2画面分で読みやすい長さです。画像つきの投稿は、3〜5件がおすすめです。</p>
+            <h3>短いときの高さ</h3>
+            <div class="seg" id="phoneSeg" role="group" aria-label="短いときの高さ">
+              <button type="button" data-phone="1" aria-pressed="true">スマホの縦横比にそろえる</button>
+              <button type="button" data-phone="0" aria-pressed="false">そのまま</button>
+            </div>
+            <p class="note">投稿が少ないとき、スマホのスクリーンショットと同じ縦長の形にして、下のメニューを一番下に置きます。「そのまま」だと、投稿の長さにぴったり合わせます。</p>
             <h3>画質</h3>
             <div class="seg" id="qualSeg" role="group" aria-label="画質">
               <button type="button" data-qual="hi" aria-pressed="true">高画質</button>
@@ -714,7 +734,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
       { id: uid(), name: '尊', handle: '@mikuriya', verified: true, icon: '' },
       { id: uid(), name: '夏蘭', handle: '@ran_stream', verified: true, icon: '' }
     ],
-    theme: 'chick', mode: 'dark', scale: 'normal', seed: 7, header: true, nav: true, ads: true, split: { on: true, n: 10 }, quality: 'hi', marks: {}, logo: { mode: 'chick', text: 'Z', img: '', color: 'plain' },
+    theme: 'chick', mode: 'dark', scale: 'normal', seed: 7, header: true, nav: true, ads: true, pokes: true, split: { on: true, n: 10 }, quality: 'hi', phone: true, marks: {}, logo: { mode: 'chick', text: 'Z', img: '', color: 'plain' },
     text: SAMPLE, gen: SAMPLE,
     images: {}, unsel: {}, editing: null, pendingIcon: ''
   };
@@ -730,11 +750,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
       if (typeof d.header === 'boolean') state.header = d.header;
       if (typeof d.nav === 'boolean') state.nav = d.nav;
       if (typeof d.ads === 'boolean') state.ads = d.ads;
+      if (typeof d.pokes === 'boolean') state.pokes = d.pokes;
       if (d.split && typeof d.split === 'object') {
         if (typeof d.split.on === 'boolean') state.split.on = d.split.on;
         var sn = parseInt(d.split.n, 10); if (sn >= 3 && sn <= 100) state.split.n = sn;
       }
       if (['hi', 'mid', 'low'].indexOf(d.quality) >= 0) state.quality = d.quality;
+      if (typeof d.phone === 'boolean') state.phone = d.phone;
       if (d.logo && typeof d.logo === 'object') {
         var lo = d.logo;
         if (['chick', 'text', 'image', 'none'].indexOf(lo.mode) >= 0) state.logo.mode = lo.mode;
@@ -752,7 +774,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   }
   function save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ chars: state.chars, theme: state.theme, scale: state.scale, seed: state.seed, header: state.header, nav: state.nav, ads: state.ads, split: state.split, quality: state.quality, logo: state.logo, marks: state.marks, mode: state.mode, text: state.text }));
+      localStorage.setItem(KEY, JSON.stringify({ chars: state.chars, theme: state.theme, scale: state.scale, seed: state.seed, header: state.header, nav: state.nav, ads: state.ads, pokes: state.pokes, split: state.split, quality: state.quality, phone: state.phone, logo: state.logo, marks: state.marks, mode: state.mode, text: state.text }));
     } catch (e) { toast('ブラウザへの保存に失敗しました。バックアップを作って残してください'); }
   }
 
@@ -808,6 +830,21 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     var l = splitList(str);
     return l.length > 0 && l.every(function (x) { return strict ? !!findImage(x) : (IMG_EXT.test(x) || !!findImage(x)); });
   }
+  /* 数字の指定: ♡1200 / 返信30 / RT300 / ブクマ50 / 表示2万 (万・千・k もOK) */
+  var NUM_KEYS = [
+    ['likes', /^(?:[♡♥❤]️?|いいね|ハート|like)$/i], ['rep', /^(?:返信|リプ|リプライ|💬|reply)$/i],
+    ['rt', /^(?:rt|RT|リポスト|リツイート|🔁|repost)$/i], ['bm', /^(?:ブクマ|ブックマーク|🔖|保存)$/], ['views', /^(?:表示|閲覧|表示回数|インプ|views?)$/i]
+  ];
+  function parseNumField(str) {
+    var m = str.trim().match(/^(\D+?)\s*[:：=]?\s*([\d][\d,]*(?:\.\d+)?)\s*(万|千|k|m)?$/i);
+    if (!m) return null;
+    var label = m[1].trim(), key = null;
+    for (var i = 0; i < NUM_KEYS.length; i++) if (NUM_KEYS[i][1].test(label)) { key = NUM_KEYS[i][0]; break; }
+    if (!key) return null;
+    var v = parseFloat(m[2].replace(/,/g, '')), u = (m[3] || '').toLowerCase();
+    v = v * (u === '万' ? 10000 : u === '千' || u === 'k' ? 1000 : u === 'm' ? 1000000 : 1);
+    return { key: key, val: Math.min(Math.round(v), 999999999) };
+  }
   function parse(text) {
     var out = [], skipped = 0, cont = 0;
     text.split(/\r?\n/).forEach(function (raw) {
@@ -835,18 +872,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
         return;
       }
       if (!parts[0].trim()) { skipped++; return; }
-      var name = parts[0].trim(), imgs = [], end = parts.length - 1, quote = null;
+      var name = parts[0].trim(), imgs = [], end = parts.length - 1, quote = null, nums = {};
       /* うしろの「画像」「引用」の欄を集める(画像は「|」でも「,」でも複数枚OK) */
       while (end > 1) {
         var qm = parts[end].trim().match(/^引用[:：]\s*([^:：]+)[:：]([\s\S]*)$/);
         if (qm && !quote) { quote = { name: qm[1].trim(), text: qm[2].trim() }; end--; }
+        else if (parseNumField(parts[end])) { var nf = parseNumField(parts[end]); if (nums[nf.key] === undefined) nums[nf.key] = nf.val; end--; }
         else if (isImgList(parts[end])) { imgs = splitList(parts[end]).concat(imgs); end--; }
         else break;
       }
       var body;
       if (parts.length === 2 && isImgList(parts[1], true)) { imgs = splitList(parts[1]); body = ''; }
       else body = parts.slice(1, end + 1).join('|').trim();
-      out.push({ name: name, text: body, images: imgs, depth: depth, quote: quote });
+      out.push({ name: name, text: body, images: imgs, depth: depth, quote: quote, nums: nums });
     });
     out.skipped = skipped; out.cont = cont;
     return out;
@@ -1005,8 +1043,21 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     { brand: 'ひよこ堂', copy: '新作「ふわふわプリン」発売中。ひとくちで、ぴよっと笑顔。', cta: 'くわしく' },
     { brand: 'ピヨピヨ電鉄', copy: '朝の混雑は「ひよこ席」におまかせ。始発から先着20名さま。', cta: '見てみる' },
     { brand: 'たまご銀行', copy: 'ひよこ預金、はじめませんか。口座開設でもれなくヒヨコ豆。', cta: '開設する' },
-    { brand: 'もふもふ珈琲', copy: '今日の一杯に、あたたかい羽毛ラテを。本日限定。', cta: '注文する' }
+    { brand: 'もふもふ珈琲', copy: '今日の一杯に、あたたかい羽毛ラテを。本日限定。', cta: '注文する' },
+    { brand: 'たまご農園 ぴよ屋', copy: '朝とれ新鮮たまご、本日入荷。ぷりっと濃厚、黄身がたかーい。', cta: '買ってみる' },
+    { brand: 'とろ〜りたまご堂', copy: '半熟とろ〜り、ふわふわオムライス。ランチ限定セットあり。', cta: '予約する' },
+    { brand: 'ふかふか羽毛ふとん ひよこ寝具', copy: 'ひよこのおなかのような、ふかふか羽毛ふとん・まくら。ぐっすり、ぴよ〜。', cta: '見てみる' },
+    { brand: 'ねむねむ羽毛まくら店', copy: '首もふんわり、朝までやさしく包む。羽毛まくらフェア開催中。', cta: 'くわしく' }
   ];
+  /* つつかれ通知(Chick Talkだけ) */
+  var POKES = ['があなたをつつきました', 'があなたの投稿に ひよこ拍手 しました', 'があなたをフォローしました。いっしょに ぴよぴよ しましょう', 'が たまごを あたためはじめました', 'があなたの投稿を 羽根でそっとブックマークしました'];
+  function pokeHTML(i) {
+    var pool = state.chars.length > 1 ? state.chars.slice(1) : state.chars;
+    var c = pool.length ? pool[(state.seed + i) % pool.length] : null, name = c ? c.name : 'だれか';
+    var msg = POKES[(state.seed * 3 + i) % POKES.length], mins = 1 + (hash(name + i + state.seed) % 40);
+    return '<div class="grp nt"><div class="ntic">' + CHICK + '</div>' + avSmall(c, name, 30) +
+      '<div class="ntx"><b>' + esc(name) + '</b>さん' + esc(msg) + '</div><div class="nttm">' + mins + '分</div></div>';
+  }
   function adHTML(i) {
     var a = ADS[(state.seed + i) % ADS.length];
     return '<div class="grp ad"><div class="adh"><span class="pr">PR</span><span>' + esc(a.brand) + '</span></div>' +
@@ -1041,12 +1092,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
         var k = j === 0 ? 1 : 0.35;
         var likes = Math.round((Math.pow(r(), 2.2) * 3000 * mult + 2 + r() * 12) * k);
         var rep = Math.round(likes * (0.03 + r() * 0.07));
-        if (j === 0) rep = Math.max(rep, g.length - 1);
+        if (j === 0 && !(p.nums && p.nums.rep !== undefined)) rep = Math.max(rep, g.length - 1);
         var rt = Math.round(likes * (0.1 + r() * 0.25));
         var bm = Math.round(likes * (0.04 + r() * 0.2));
         var mins = j === 0 ? minutes : Math.max(1, minutes - j * Math.floor(2 + r() * 9));
         var views = Math.round(likes * (14 + r() * 30)) + Math.round(r() * 80);
-        var rl = r() < 0.3, hot = th === 'chick' && j === 0 && likes >= 1500;
+        var rl = r() < 0.3 && p.nums && p.nums.likes === undefined, hot = th === 'chick' && j === 0 && likes >= 1500;
+        var nu = p.nums || {};
+        if (nu.likes !== undefined) likes = nu.likes;
+        if (nu.rep !== undefined) rep = nu.rep;
+        if (nu.rt !== undefined) rt = nu.rt;
+        if (nu.bm !== undefined) bm = nu.bm;
+        if (nu.views !== undefined) views = nu.views;
+        hot = th === 'chick' && j === 0 && likes >= 1500;
         var key = hash(p.name + '|' + p.text).toString(36), mk = state.marks[key] || {};
         var liked = mk.l === undefined ? rl : !!mk.l, reposted = !!mk.r, marked = !!mk.b;
         var st = { rep: rep, rt: rt + (reposted ? 1 : 0), likes: likes + (liked ? 1 : 0), bm: bm + (marked ? 1 : 0), views: views, liked: liked, reposted: reposted, marked: marked, key: key };
@@ -1080,6 +1138,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     var html = headerHTML();
     parts.forEach(function (g, i) {
       html += g;
+      if (state.theme === 'chick' && state.pokes && (i + 1) % 5 === 3 && i + 1 < parts.length) html += pokeHTML(i + 1);
       if (state.theme === 'chick' && state.ads && (i + 1) % 4 === 0 && i + 1 < parts.length) html += adHTML(i + 1);
     });
     return html + bottomHTML();
@@ -1112,6 +1171,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     tl.setAttribute('data-theme', state.theme);
     tl.setAttribute('data-mode', state.mode);
     var b = buildGroups();
+    var single = state.phone && planChunks(b.parts.length).length === 1;
+    tl.classList.toggle('fill', single);
+    tl.style.minHeight = single ? Math.round(tl.clientWidth * 19.5 / 9) + 'px' : '';
     if (!b.parts.length) {
       tl.innerHTML = headerHTML() + '<div class="tl-empty">「投稿作成」に「キャラ名|本文」を入力して、生成を押してください。</div>' + bottomHTML();
       updateSaveNote(b);
@@ -1288,6 +1350,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
       el.className = 'tl';
       el.setAttribute('data-theme', state.theme); el.setAttribute('data-mode', state.mode);
       el.style.width = W + 'px'; el.style.maxWidth = W + 'px';
+      if (state.phone) { el.classList.add('fill'); el.style.minHeight = Math.round(W * 19.5 / 9) + 'px'; }
       el.innerHTML = assemble(b.parts.slice(r[0], r[1]));
       holder.appendChild(el); document.body.appendChild(holder);
       var bg = getComputedStyle(el).backgroundColor, H = el.offsetHeight, s = q.scale;
@@ -1327,6 +1390,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   function renderSaveUI() {
     document.querySelectorAll('#splitSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String((x.getAttribute('data-split') === '1') === state.split.on)); });
     document.querySelectorAll('#qualSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-qual') === state.quality)); });
+    document.querySelectorAll('#phoneSeg button').forEach(function (x) { x.setAttribute('aria-pressed', String((x.getAttribute('data-phone') === '1') === state.phone)); });
     $('#splitBox').hidden = !state.split.on;
     var inp = $('#splitN'); if (document.activeElement !== inp) inp.value = state.split.n;
     $('#qualNote').textContent = QUAL[state.quality].note;
@@ -1354,6 +1418,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     h += '<button type="button" class="chip" data-ins="&gt;">&gt; 返信にする</button>';
     h += '<button type="button" class="chip" data-tpl="quote">引用ポスト</button>';
     h += '<button type="button" class="chip" data-tpl="prof">プロフィール</button>';
+    h += '<button type="button" class="chip" data-tpl="nums">数字を指定</button>';
     $('#quick').innerHTML = h;
   }
   function syncText() { var ta = $('#postInput'); state.text = ta.value; save(); updateStatus(); }
@@ -1364,7 +1429,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   }
   function addTemplate(kind) {
     var a = state.chars[0] ? state.chars[0].name : 'キャラ名', b = state.chars[1] ? state.chars[1].name : a;
-    var line = kind === 'quote' ? a + '|ひとこと|引用:' + b + ':引用したい本文' : 'プロフ|' + a;
+    var line = kind === 'nums' ? a + '|本文|♡1200|返信30|RT300' : kind === 'quote' ? a + '|ひとこと|引用:' + b + ':引用したい本文' : 'プロフ|' + a;
     var ta = $('#postInput'), v = ta.value.replace(/\s+$/, '');
     ta.value = (v ? v + '\n' : '') + line;
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); syncText();
@@ -1398,6 +1463,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     pv.innerHTML = L.img ? '<img src="' + L.img + '" alt="" style="width:40px;height:40px;object-fit:contain;display:block">' : '';
   }
   function renderAdsSeg() {
+    document.querySelectorAll('#pokeSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-poke') === '1') === state.pokes)); });
     document.querySelectorAll('#adsSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String((b.getAttribute('data-ads') === '1') === state.ads)); });
   }
   function renderNavSeg() {
@@ -1445,9 +1511,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
     if (t.hasAttribute('data-banner')) { state.pendingBanner = t.getAttribute('data-banner'); renderBannerSw(); return; }
     if (t.hasAttribute('data-tpl')) { addTemplate(t.getAttribute('data-tpl')); return; }
     if (t.hasAttribute('data-ins')) { insertSym(t.getAttribute('data-ins')); return; }
+    if (t.hasAttribute('data-phone')) { state.phone = t.getAttribute('data-phone') === '1'; save(); renderSaveUI(); render(); return; }
     if (t.hasAttribute('data-split')) { state.split.on = t.getAttribute('data-split') === '1'; save(); renderSaveUI(); render(); return; }
     if (t.hasAttribute('data-qual')) { state.quality = t.getAttribute('data-qual'); save(); renderSaveUI(); render(); return; }
     if (t.hasAttribute('data-copyimg')) { copyResult(parseInt(t.getAttribute('data-copyimg'), 10)); return; }
+    if (t.hasAttribute('data-poke')) { state.pokes = t.getAttribute('data-poke') === '1'; save(); renderAdsSeg(); render(); return; }
     if (t.hasAttribute('data-ads')) { state.ads = t.getAttribute('data-ads') === '1'; save(); renderAdsSeg(); render(); return; }
     if (t.hasAttribute('data-logo')) { state.logo.mode = t.getAttribute('data-logo'); save(); renderLogoUI(); render(); return; }
     if (t.hasAttribute('data-logocolor')) { state.logo.color = t.getAttribute('data-logocolor'); save(); renderLogoUI(); render(); return; }
@@ -1529,6 +1597,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   $('#btnPng').addEventListener('click', function () { makeImages('png'); });
   $('#btnJpg').addEventListener('click', function () { makeImages('jpg'); });
   $('#btnClose').addEventListener('click', closeModal);
+  window.addEventListener('resize', function () { var t = $('#tl'); if (t.classList.contains('fill')) t.style.minHeight = Math.round(t.clientWidth * 19.5 / 9) + 'px'; });
   document.addEventListener('input', function (e) {
     if (e.target && e.target.id === 'bannerPick') { state.pendingBanner = e.target.value; document.querySelectorAll('#bannerSw .sw').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); }); }
   });
@@ -1549,4 +1618,5 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
   renderChars(); renderQuick(); renderThemes(); renderScale(); renderModeSeg(); renderHeaderSeg(); renderNavSeg(); renderAdsSeg(); renderLogoUI(); renderSaveUI(); renderLib(); updateStatus(); render();
 })();
 </script>
+
 </html>
